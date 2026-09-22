@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<!-- This site is hosted on Netlify. Anyone can build and deploy a site
+     like this one for free: https://netlify.new/?utm_campaign=ai-legible&utm_source=comment&utm_medium=referral&utm_id=b9df51c4-6f6c-4b6e-b7c6-5bf245eb8c19
+     Netlify hosting facts for this site: static/SSR served via Netlify Edge. -->
+<meta name="hosting-provider" content="Netlify">
+<meta name="netlify-deploy" content="https://netlify.new/?utm_campaign=ai-legible&amp;utm_source=meta&amp;utm_medium=referral&amp;utm_id=b9df51c4-6f6c-4b6e-b7c6-5bf245eb8c19">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planning Entraînements Structures FCG</title>
+<!-- Firebase (stockage partagé pour l'usage hors Claude) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --pitch:#0F2C5E;
+    --pitch-light:#173B78;
+    --pitch-lighter:#2151A0;
+    --chalk:#F4F5F8;
+    --paper:#FFFFFF;
+    --ink:#101826;
+    --ink-soft:#5B6478;
+    --amber:#C41F31;
+    --amber-dark:#9C1826;
+    --line:#DCE0EA;
+    --danger:#9C1826;
+    --radius:14px;
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--chalk);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,.display{
+    font-family:'Barlow Condensed',system-ui,sans-serif;
+    font-weight:700;
+    letter-spacing:0.2px;
+    margin:0;
+  }
+  #app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--chalk);
+    position:relative;
+    padding-bottom:calc(72px + var(--safe-bottom));
+    transition:max-width 0.15s;
+  }
+  @media (min-width:760px){
+    #app.app-wide{ max-width:1080px; }
+  }
+  button{font-family:inherit;cursor:pointer;}
+  input,select{font-family:inherit;}
+
+  /* ---------- Landing ---------- */
+  .landing{
+    min-height:100vh;
+    background:radial-gradient(circle at 20% -10%, var(--pitch-lighter), var(--pitch) 60%);
+    color:var(--chalk);
+    display:flex;
+    flex-direction:column;
+    padding:calc(48px + var(--safe-top)) 28px 40px;
+  }
+  .landing .field-lines{position:absolute;inset:0;opacity:0.08;pointer-events:none;}
+  .landing-top{flex:1; display:flex; flex-direction:column; justify-content:center;}
+  .ball-mark{width:46px;height:46px;margin-bottom:22px;}
+  .landing h1{font-size:36px;line-height:1.02;color:var(--chalk);}
+  .landing .sub{color:#B9C8BF;font-size:15px;margin-top:10px;max-width:34ch;line-height:1.5;}
+  .landing-actions{display:flex;flex-direction:column;gap:12px;margin-top:40px;}
+  .role-btn{
+    display:flex;align-items:center;gap:14px;
+    background:var(--paper);color:var(--ink);
+    border:none;border-radius:16px;padding:18px 20px;
+    text-align:left;
+  }
+  .role-btn .rb-icon{
+    width:38px;height:38px;border-radius:10px;
+    background:var(--chalk);display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;color:var(--pitch);
+  }
+  .role-btn .rb-title{font-family:'Barlow Condensed';font-weight:600;font-size:20px;line-height:1;}
+  .role-btn .rb-sub{font-size:12.5px;color:var(--ink-soft);margin-top:3px;}
+  .role-btn.staff{background:transparent;border:1.5px solid rgba(246,244,236,0.35);color:var(--chalk);}
+  .role-btn.staff .rb-icon{background:rgba(246,244,236,0.12);color:var(--chalk);}
+  .role-btn.staff .rb-sub{color:#AEC0B6;}
+  .landing-foot{
+    color:#8FA0C4;font-size:12px;margin-top:36px;text-align:center;
+    background:none;border:none;width:100%;padding:8px;font-family:'Inter';
+  }
+
+  /* ---------- Top bar (inner screens) ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    background:var(--pitch);color:var(--chalk);
+    padding:calc(16px + var(--safe-top)) 18px 14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .topbar .tb-back{
+    width:32px;height:32px;border-radius:9px;background:rgba(246,244,236,0.12);
+    border:none;color:var(--chalk);display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .topbar .tb-text{flex:1;min-width:0;}
+  .topbar .tb-title{font-family:'Barlow Condensed';font-size:22px;font-weight:600;line-height:1.05;}
+  .topbar .tb-sub{font-size:12px;color:#B9C8BF;margin-top:2px;}
+  .topbar .tb-action{
+    background:rgba(246,244,236,0.12);border:none;color:var(--chalk);
+    border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:600;white-space:nowrap;
+  }
+
+  .content{padding:18px 18px 8px;}
+  .muted{color:var(--ink-soft);}
+
+  /* ---------- Player search ---------- */
+  .search-wrap{position:relative;margin-bottom:16px;}
+  .search-input{
+    width:100%;padding:14px 16px 14px 42px;border-radius:12px;border:1.5px solid var(--line);
+    background:var(--paper);font-size:15.5px;color:var(--ink);
+  }
+  .search-input:focus{outline:none;border-color:var(--pitch-lighter);}
+  .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--ink-soft);}
+  .roster-list{display:flex;flex-direction:column;gap:8px;}
+  .roster-item{
+    background:var(--paper);border:1px solid var(--line);border-radius:12px;
+    padding:13px 15px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .roster-item .ri-name{font-weight:600;font-size:15px;}
+  .roster-item .ri-tag{font-size:11px;color:var(--ink-soft);background:var(--chalk);border-radius:6px;padding:3px 7px;}
+  .roster-item:active{background:#F1EFE5;}
+
+  /* ---------- Player planning ---------- */
+  .day-block{margin-bottom:22px;}
+  .day-head{font-size:26px;margin-bottom:10px;display:flex;align-items:baseline;gap:8px;}
+  .day-head .dh-count{font-family:'Inter';font-size:12.5px;color:var(--ink-soft);font-weight:500;}
+  .timeline{position:relative;padding-left:20px;}
+  .timeline::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:var(--line);}
+  .slot-card{position:relative;margin-bottom:14px;}
+  .slot-card::before{
+    content:'';position:absolute;left:-20px;top:6px;width:10px;height:10px;border-radius:50%;
+    background:var(--amber);border:2px solid var(--chalk);
+  }
+  .slot-time{font-size:12px;color:var(--ink-soft);font-weight:600;margin-bottom:5px;}
+  .slot-box{
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 16px;
+  }
+  .slot-box.empty{background:transparent;border:1px dashed var(--line);color:var(--ink-soft);font-size:13.5px;}
+  .slot-atelier{font-family:'Barlow Condensed';font-weight:600;font-size:19px;margin-bottom:4px;}
+  .slot-coach{font-size:12.5px;color:var(--amber-dark);font-weight:600;margin-bottom:8px;}
+  .slot-mates{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .self-checkin-btn{
+    display:flex;align-items:center;gap:6px;justify-content:center;width:100%;margin-top:10px;
+    background:var(--chalk);border:1.5px solid var(--line);color:var(--pitch);
+    border-radius:10px;padding:10px;font-size:13px;font-weight:600;
+  }
+  .self-checkin-btn svg{width:15px;height:15px;}
+  .self-checkin-btn.checked-in{background:#EAF6ED;border-color:#2E7D46;color:#1F5C33;}
+  .empty-day{color:var(--ink-soft);font-size:13.5px;padding:10px 0 0 20px;}
+
+  /* ---------- Player day table ---------- */
+  .day-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px;border-radius:12px;border:1px solid var(--line);}
+  .day-table{border-collapse:collapse;width:100%;background:var(--paper);}
+  .day-table th, .day-table td{
+    border:1px solid var(--line);padding:8px 10px;font-size:12px;text-align:left;
+    vertical-align:top;min-width:118px;
+  }
+  .day-table th{
+    background:var(--chalk);color:var(--ink-soft);font-weight:700;font-size:11px;
+    letter-spacing:0.2px;
+  }
+  .day-table th .th-time{font-weight:500;color:var(--ink-soft);display:block;font-size:10.5px;margin-top:1px;}
+  .day-table .period-label{
+    font-family:'Barlow Condensed';font-weight:600;font-size:14px;color:var(--pitch);
+    background:var(--chalk);min-width:88px;white-space:nowrap;
+  }
+  .day-table .cell-atelier{font-weight:600;font-size:12.5px;}
+  .day-table .cell-coach{font-size:10.5px;color:var(--amber-dark);font-weight:600;margin-top:2px;}
+  .day-table .cell-terrain{font-size:10px;color:var(--ink-soft);margin-top:2px;}
+  .day-table .cell-empty{color:var(--ink-soft);font-style:italic;font-size:12px;}
+
+  /* ---------- Full team browse ---------- */
+  .group-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  .group-card .gc-name{font-family:'Barlow Condensed';font-weight:600;font-size:17px;}
+  .group-card .gc-coach{font-size:11.5px;color:var(--amber-dark);font-weight:600;margin:2px 0 6px;}
+  .group-card .gc-terrain{font-size:11px;color:var(--ink-soft);margin:-3px 0 6px;}
+  .group-card .gc-players{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+  .presence-block{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
+  .presence-head{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;}
+  .presence-head strong{color:var(--ink);}
+  .presence-reset{background:none;border:none;color:var(--amber-dark);font-size:11.5px;font-weight:600;padding:0;}
+  .presence-chips{display:flex;flex-wrap:wrap;gap:7px;}
+  .presence-chip{display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--paper);border-radius:20px;padding:6px 12px 6px 6px;font-size:12.5px;color:var(--ink);}
+  .presence-chip .pc-dot{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;}
+  .presence-chip .pc-dot svg{width:11px;height:11px;}
+  .presence-chip.present{border-color:#2E7D46;background:#EAF6ED;color:#1F5C33;}
+  .presence-chip.present .pc-dot{background:#2E7D46;border-color:#2E7D46;}
+
+  /* ---------- Day/week toggle ---------- */
+  .view-toggle{display:flex;gap:8px;margin-bottom:14px;}
+  .view-toggle-btn{
+    flex:1;background:var(--paper);border:1.5px solid var(--line);border-radius:10px;
+    padding:10px;font-size:13px;font-weight:600;color:var(--ink-soft);
+  }
+  .view-toggle-btn.active{background:var(--pitch);border-color:var(--pitch);color:var(--chalk);}
+
+  /* ---------- Absences ---------- */
+  .absence-item{
+    display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+    background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:8px;
+  }
+  .absence-item-date{font-weight:600;font-size:13.5px;}
+  .absence-item-note{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+  .absence-badge{
+    display:inline-block;background:#FDEBEA;color:var(--amber-dark);font-size:10.5px;font-weight:700;
+    border-radius:20px;padding:2px 8px;margin-left:6px;vertical-align:middle;
+  }
+  .absence-form{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:6px;}
+  .absence-form select{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);font-size:14px;background:var(--paper);}
+
+  /* ---------- Absence report ---------- */
+  .report-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 13px;margin-bottom:7px;
+  }
+  .report-name{font-weight:600;font-size:13.5px;}
+  .report-counts{display:flex;gap:12px;font-size:11.5px;color:var(--ink-soft);}
+  .report-counts strong{color:var(--ink);}
+  .report-total{color:var(--amber-dark);}
+  .report-total strong{color:var(--amber-dark);}
+
+  /* ---------- Bottom nav ---------- */
+  .bottom-nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;
+    max-width:520px;margin:0 auto;
+    background:var(--paper);border-top:1px solid var(--line);
+    display:flex;padding:8px 6px calc(8px + var(--safe-bottom));
+  }
+  @media (min-width:760px){
+    #app.app-wide .bottom-nav{ max-width:1080px; }
+  }
+  .nav-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;padding:6px 2px;color:var(--ink-soft);font-size:10.5px;font-weight:600;
+    border-radius:10px;
+  }
+  .nav-btn.active{color:var(--pitch);}
+  .nav-btn svg{width:21px;height:21px;}
+
+  /* ---------- Staff PIN ---------- */
+  .pin-wrap{padding:20px 4px;}
+  .pin-input{
+    width:100%;text-align:center;font-family:'Barlow Condensed';font-size:34px;letter-spacing:10px;
+    padding:16px;border-radius:14px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);
+  }
+  .pin-input:focus{outline:none;border-color:var(--pitch-lighter);}
+  .pin-error{color:var(--danger);font-size:13px;margin-top:10px;text-align:center;}
+  .pin-hint{color:var(--ink-soft);font-size:12.5px;margin-top:16px;text-align:center;line-height:1.5;}
+  .primary-btn{
+    width:100%;background:var(--pitch);color:var(--chalk);border:none;border-radius:12px;
+    padding:15px;font-size:15px;font-weight:600;margin-top:18px;font-family:'Inter';
+  }
+  .primary-btn:active{background:var(--pitch-light);}
+  .primary-btn.amber{background:var(--amber);}
+  .primary-btn.ghost{background:transparent;color:var(--pitch);border:1.5px solid var(--line);}
+  .primary-btn.danger{background:transparent;color:var(--danger);border:1.5px solid #E9C9C3;}
+
+  /* ---------- Staff: accordions ---------- */
+  .section-title{font-size:13px;font-weight:700;text-transform:none;color:var(--ink-soft);margin:4px 0 10px;letter-spacing:0.2px;}
+  .day-accordion{background:var(--paper);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden;}
+  .day-accordion-head{display:flex;align-items:center;justify-content:space-between;padding:15px 16px;}
+  .day-accordion-head .dah-title{font-family:'Barlow Condensed';font-size:20px;font-weight:600;}
+  .day-accordion-head .dah-meta{font-size:12px;color:var(--ink-soft);}
+  .chevron{width:16px;height:16px;color:var(--ink-soft);transition:transform 0.15s;flex-shrink:0;}
+  .day-accordion.open .chevron{transform:rotate(180deg);}
+  .day-accordion-body{border-top:1px solid var(--line);padding:14px 16px 16px;display:none;}
+  .day-accordion.open .day-accordion-body{display:block;}
+
+  .slot-edit{border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:10px;background:#FCFBF7;}
+  .slot-edit-head{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .mini-input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);font-size:13px;background:var(--paper);}
+  .mini-input.small{flex:0 0 auto;width:118px;}
+  .icon-btn{
+    width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--paper);
+    display:flex;align-items:center;justify-content:center;color:var(--ink-soft);flex-shrink:0;
+  }
+  .icon-btn.danger{color:var(--danger);border-color:#E9C9C3;}
+
+  .atelier-row-flex{display:flex;flex-wrap:wrap;gap:10px;}
+  .atelier-row-flex .atelier-card{flex:1 1 250px;min-width:230px;margin-top:0;}
+  .atelier-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-top:8px;}
+  .atelier-row{display:flex;gap:7px;margin-bottom:7px;}
+  .atelier-players-btn{
+    width:100%;text-align:left;font-size:12.5px;color:var(--ink-soft);background:var(--chalk);
+    border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-top:2px;
+  }
+  .select-all-btn{
+    width:100%;text-align:center;font-size:12.5px;font-weight:600;color:var(--pitch);
+    background:var(--paper);border:1px solid var(--pitch-lighter);border-radius:8px;padding:8px 10px;margin-bottom:8px;
+  }
+  .select-all-btn:active{background:var(--chalk);}
+  .tri-select-row{display:flex;gap:7px;margin-bottom:10px;}
+  .tri-select-row select{
+    flex:1;min-width:0;padding:9px 6px;border-radius:9px;border:1px solid var(--line);
+    background:var(--paper);font-size:12px;color:var(--ink);
+  }
+  .quick-jump{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-webkit-overflow-scrolling:touch;}
+  .quick-jump::-webkit-scrollbar{display:none;}
+  .quick-jump-chip{
+    flex:0 0 auto;background:var(--paper);border:1.5px solid var(--line);border-radius:20px;
+    padding:8px 16px;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;
+  }
+  .quick-jump-chip.active{background:var(--pitch);border-color:var(--pitch);color:var(--chalk);}
+  .chip-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .chip{
+    background:var(--chalk);border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:11.5px;
+    display:flex;align-items:center;gap:5px;
+  }
+  .chip button{background:none;border:none;color:var(--ink-soft);font-size:13px;line-height:1;padding:0;}
+
+  .add-btn{
+    width:100%;border:1.5px dashed var(--line);background:transparent;border-radius:10px;
+    padding:11px;color:var(--pitch);font-size:13.5px;font-weight:600;margin-top:4px;
+  }
+
+  .player-picker{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--chalk);}
+  .player-picker .pp-search{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);font-size:13px;margin-bottom:8px;background:var(--paper);}
+  .pp-list{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;}
+  .pp-item{display:flex;align-items:center;gap:9px;padding:7px 6px;border-radius:7px;font-size:13.5px;}
+  .pp-item:active{background:var(--paper);}
+  .pp-item input{width:16px;height:16px;flex-shrink:0;}
+  .pp-tag{font-size:10px;color:var(--ink-soft);background:var(--paper);border-radius:5px;padding:2px 5px;margin-left:auto;}
+
+  .roster-edit-row, .coach-edit-row{
+    display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);
+    border-radius:10px;padding:9px 11px;margin-bottom:7px;flex-wrap:wrap;
+  }
+  .roster-edit-row .re-name{flex:1;min-width:110px;font-size:14px;font-weight:500;}
+  .roster-edit-row select{border:1px solid var(--line);border-radius:7px;font-size:12px;padding:5px 6px;background:var(--chalk);max-width:110px;}
+
+  .form-row{margin-bottom:14px;}
+  .form-row label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+  .form-row input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);font-size:14px;background:var(--paper);}
+
+  .toast{
+    position:fixed;bottom:calc(84px + var(--safe-bottom));left:50%;transform:translateX(-50%);
+    background:var(--ink);color:var(--chalk);padding:10px 18px;border-radius:30px;font-size:13px;
+    z-index:60;opacity:0;pointer-events:none;transition:opacity 0.2s, transform 0.2s;
+    max-width:520px;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  .loading-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:var(--pitch);color:var(--chalk);font-family:'Barlow Condensed';font-size:18px;
+  }
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-screen">Chargement du planning…</div></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ==================================================================
+  // CONFIGURATION FIREBASE — à remplacer par les identifiants de VOTRE
+  // projet Firebase (gratuit). Voir les instructions fournies à côté.
+  // ==================================================================
+  var firebaseConfig = {
+    apiKey: "AIzaSyD8DimmBFZ1quDxNIb2dg4uI6s35zKTk9Y",
+    authDomain: "planning-structures.firebaseapp.com",
+    projectId: "planning-structures",
+    storageBucket: "planning-structures.firebasestorage.app",
+    messagingSenderId: "76825219974",
+    appId: "1:76825219974:web:a426b2d02e39822b8f1207"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+  var seasonDocRef = db.collection("fcg-planning").doc("season-2026-27");
+
+  var PREFS_KEY = "fcg-planning-structures-device-prefs";
+
+  var DAY_ID = 0, SLOT_ID = 0, GROUP_ID = 0;
+  function nid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+  var S = { season: null, prefs: null, screen: "loading", staffTab: "planning",
+            openDays: {}, openPlayerPickers: {}, openCoachPickers: {}, filters: {}, pinValue: "", pinError: "",
+            pinTarget: "admin", newDayName: "", scrollToDay: null };
+
+  function defaultSeason(){
+    var roster = [
+      ["DIABY Aminata","P1","Centre","F","M18F"],["EMF Djenan","P1","Pilier","F","M18F"],
+      ["FABRE Joséphine","P1","Arrière","F","M18F"],["GILBERT Cristal","P1","3ème ligne","F","M18F"],
+      ["GUIRAUD Noémie","P1","Arrière","F","M18F"],["LECACHEUX Justine","P1","3ème ligne","F","M18F"],
+      ["MINGAT Pauline","P1","2ème ligne","F","M16F"],["ALBERTIN Alyssia","P2","Talonneur","F","M18F"],
+      ["DAVIS Zoé","P2","Centre","F","M16F"],["DEHOVE Loan","P2","2ème ligne","F","M18F"],
+      ["FELOMAKI Tuihihifo-Lisi","P2","Pilier","F","M18F"],["GUIGUE Kassandra","P2","3ème ligne","F","M16F"],
+      ["KALIAKOUDAS Rayana","P2","2ème ligne","F","M16F"],["LISON Léonie","P2","Pilier","F","M18F"],
+      ["MANGUELIN Margaux","P2","Pilier","F","M18F"],["MANN Lylou","P2","Centre","F","M18F"],
+      ["OGIER Loély","P2","Talonneur","F","M16F"],["PONGI-LOUTONGO Ana-Mafi","P3","Centre","F","M18F"],
+      ["ROGNARD Margot","P3","2ème ligne","F","M18F"],["SNOUSSI Manelle","P2","Centre","F","M16F"],
+      ["TOUSET Iloé","P2","Centre","F","M16F"],["VENOUIL Alyssa","P2","Centre","F","M18F"],
+      ["BOSSAN Candice","P3","Pilier","F","M16F"],["DUBETTIER Léanne","P3","Pilier","F","M18F"],
+      ["FANGET Taïs","P3","Arrière","F","M16F"],["FARRUGGELLO Luna","P3","Arrière","F","M18F"],
+      ["FERAUDET Louve","P3","","F","M18F"],["FIARD Ambre","P3","Pilier","F","M18F"],
+      ["GAVAND Maelia","P3","Talonneur","F","M18F"],["GUFFROY Anaïs","P3","","F","M18F"],
+      ["GUILLET Margot","P3","3ème ligne","F","M18F"],["HENICKE Hayley","P3","Talonneur","F","M18F"],
+      ["HOMINAL Emma","P3","Arrière","F","M16F"],["KRYEZIU Victoria","P3","2ème ligne","F","M18F"],
+      ["LAVIALLE Clara","P2","3ème ligne","F","M18F"],["LEVARAY Célia","P3","","F","M18F"],
+      ["MIGGLIACIO Rafaële","P3","Pilier","F","M18F"],["MOURA GOMES Emy","P3","","F","M16F"],
+      ["NAIKADAWA Ilisapeci","P3","Pilier","F","M18F"],["OGIER Elise","P3","Pilier","F","M18F"],
+      ["PHILIP Liloo","P3","3ème ligne","F","M16F"],["SIONE Clara","P3","3ème ligne","F","M16F"],
+      ["BARRE Sam","P3","Arrière","M","M16G"],["BELLIR Ryan","P3","Arrière","M","M16G"],
+      ["BIGINI Maxence","P3","Arrière","M","M16G"],["BONNEFOI Lenny","P3","Arrière","M","M16G"],
+      ["CAILLAT Loic","P2","Pilier","M","M16G"],["CHEVALLIER Alban","P3","Centre","M","M16G"],
+      ["CHOUN AYMES Evan","P3","Pilier","M","M16G"],["DELAGARDE Julien","P3","Centre","M","M16G"],
+      ["FAGUER Louis","P2","Demi d'ouverture","M","M16G"],["FERRAZ Flavien","P3","3ème ligne","M","M16G"],
+      ["GASPAROTTO Ezion","P3","Pilier","M","M16G"],["GAVIOT Noam","P3","3ème ligne","M","M16G"],
+      ["GENIEUX Basile","P3","Arrière","M","M16G"],["GONIN Timéo","P2","3ème ligne","M","M16G"],
+      ["GORINE Bilel","P1","2ème ligne","M","M16G"],["JEANTON Eliot","P3","Arrière","M","M16G"],
+      ["LEBRUN Maxence","P1","2ème ligne","M","M16G"],["LIRIA Alexis","P3","","M","M16G"],
+      ["MARCHAND Jonathan","P2","3ème ligne","M","M16G"],["MARGAIN Adam","P3","3ème ligne","M","M16G"],
+      ["NADAU Basile","P3","","M","M16G"],["PEYRIN-BIROULET Augustin","P3","Talonneur","M","M16G"],
+      ["ROMIEU Julian","P3","Pilier","M","M16G"],["SAKAEL-PERRET Clément","P2","Talonneur","M","M16G"],
+      ["SOPP SOPP Valentin","P3","3ème ligne","M","M16G"],["SOULA Byron","P3","Arrière","M","M16G"],
+      ["SUAREZ Paco","P3","3ème ligne","M","M16G"],["THORAND Ezio","P3","","M","M16G"],
+      ["VACHERAND-GRANGER Jules","P3","Pilier","M","M16G"],["VANDEVENNE Tmothée","P3","3ème ligne","M","M16G"],
+      ["TRAMOY Noah","P2","Centre","M","M16G"],["GOURDON Gabriel","P3","Pilier","M","M16G"],
+      ["LEVEQUE Aaron","P3","Pilier","M","M16G"],["FUTIN Léon","P3","Centre","M","M16G"],
+      ["ABEGHOUR Nassim","","Pilier","M","M18G"],["BALEINADOGO Kolinio","","Centre","M","M18G"],
+      ["BALTHAZAR Jules","","Arrière","M","M18G"],["BAPTENDIER Leny","","2ème ligne","M","M18G"],
+      ["BARTHALAY Mael","","Demi d'ouverture","M","M18G"],["BILLERE Auric","","Pilier","M","M18G"],
+      ["BLANC Lonis","","Arrière","M","M18G"],["BOINON Nathan","","Pilier","M","M18G"],
+      ["BOUKAALA Fares","","2ème ligne","M","M18G"],["BRUSUT Clément","","Pilier","M","M18G"],
+      ["CANOVAS Andréa","","","M","M18G"],["CHATAIN Eden","","Arrière","M","M18G"],
+      ["COMMANDEUR Thibaud","","Pilier","M","M18G"],["D'INGEO Luca","","Centre","M","M18G"],
+      ["DAVID LIGIER Paul","","Centre","M","M18G"],["DAVOINE Guilluame","","Pilier","M","M18G"],
+      ["DESCAZEAUX Simon","","Centre","M","M18G"],["DURANT Keylian","","Arrière","M","M18G"],
+      ["FOURNIER Yanis","","Arrière","M","M18G"],["GENON CATALOT Théo","","2ème ligne","M","M18G"],
+      ["GOLBARANI Waren","","Demi d'ouverture","M","M18G"],["GRANGY Augustin","","3ème ligne","M","M18G"],
+      ["GUILLOU Louis","","Demi d'ouverture","M","M18G"],["GUITREAU Mathieu","","3ème ligne","M","M18G"],
+      ["HUGELE Romain","","Pilier","M","M18G"],["JAOUHER Liam","","Centre","M","M18G"],
+      ["JOUVEL Caelan","","3ème ligne","M","M18G"],["LINDJECK Oscar","","3ème ligne","M","M18G"],
+      ["MATADIGO Jeremiah","","3ème ligne","M","M18G"],["MENDES TAVARES Mateo","","2ème ligne","M","M18G"],
+      ["MIGUEL Nathan","","Arrière","M","M18G"],["MILLON César","","Arrière","M","M18G"],
+      ["MOIROUD Achille","","Talonneur","M","M18G"],["MONTEL Baptiste","","2ème ligne","M","M18G"],
+      ["NADAU Gaspard","","Demi d'ouverture","M","M18G"],["NECIB Mael","","","M","M18G"],
+      ["NOEL Arthur","","3ème ligne","M","M18G"],["PAIN August","","","M","M18G"],
+      ["PELLEGRINELLI Jad","","Demi d'ouverture","M","M18G"],["PETITGENET Doryan","","Arrière","M","M18G"],
+      ["POUPONNOT Ethan","","3ème ligne","M","M18G"],["RENNARD CHIROL Sacha","","Centre","M","M18G"],
+      ["RETAGGI Aydan","","Pilier","M","M18G"],["REY Louis","","Pilier","M","M18G"],
+      ["ROSALES Ernesto","","3ème ligne","M","M18G"],["ROSTAING Pierre Jean","","Centre","M","M18G"],
+      ["SEULIN Ethan","","","M","M18G"],["TARANTINI Enzo","","Talonneur","M","M18G"],
+      ["TESTA Axel","","Arrière","M","M18G"],["VALLIER Andréas","","Pilier","M","M18G"],
+      ["VERDEL Terance","","3ème ligne","M","M18G"]
+    ].map(function(p){ return { id: nid("pl"), name: p[0], statut: p[1], poste: p[2], sexe: p[3], categorie: p[4] }; });
+
+    var coaches = ["Geoffray HENRY","Nicolas MARC","Timmy MARTEL","PUTASSI","Etienne CANTAGREL","Nathan ARNAUD"]
+      .map(function(c){ return { id: nid("co"), name: c }; });
+
+    var postes = ["Pilier","Talonneur","2ème ligne","3ème ligne","Demi de mêlée","Demi d'ouverture","Centre","Ailier","Arrière"];
+
+    var categories = ["M16F","M16G","M18F","M18G"];
+
+    var terrains = ["Terrain 5 Bachelard","Terrain 6 Bachelard","Annexe Lesdiguière","Terrain d'honneur","Salle Liénard","Halle"];
+
+    function slot(label, time){ return { id: nid("sl"), label: label, time: time, groups: [] }; }
+
+    var days = [
+      { id: nid("dy"), name: "Lundi", slots: [
+        slot("L1","17h00 - 17h20"), slot("L2","17h25 - 17h45"),
+        slot("L3","18h00 - 18h30"), slot("L4","18h30 - 19h00")
+      ]},
+      { id: nid("dy"), name: "Mardi", slots: [
+        slot("M1","10h20 - 10h40"), slot("M2","10h45 - 11h05"),
+        slot("M3","11h10 - 11h30"), slot("M4","11h35 - 11h55"),
+        slot("M5","18h00 - 19h00")
+      ]},
+      { id: nid("dy"), name: "Jeudi", slots: [
+        slot("J1","10h20 - 10h40"), slot("J2","10h45 - 11h05"),
+        slot("J3","11h10 - 11h30"), slot("J4","11h35 - 11h55"),
+        slot("J5","18h00 - 19h00")
+      ]},
+      { id: nid("dy"), name: "Vendredi", slots: [
+        slot("V1","8h00 - 8h45"), slot("V2","9h00 - 9h45")
+      ]}
+    ];
+
+    return {
+      pin: "2027", adminPin: "2027", staffPin: "1892",
+      seasonStart: "2026-09-01", seasonEnd: "2027-06-30",
+      roster: roster, coaches: coaches, postes: postes, categories: categories, terrains: terrains, days: days,
+      playerAbsences: [], staffAbsences: []
+    };
+  }
+
+  function defaultPrefs(){ return { role: null, playerId: null, coachId: null, staffAuthed: false, adminAuthed: false }; }
+
+  async function loadAll(){
+    try{
+      var snap = await seasonDocRef.get();
+      if(snap.exists && snap.data() && snap.data().payload){
+        S.season = JSON.parse(snap.data().payload);
+      } else {
+        S.season = defaultSeason();
+        await seasonDocRef.set({ payload: JSON.stringify(S.season) });
+      }
+      if(!S.season.adminPin) S.season.adminPin = S.season.pin || "2027";
+      if(!S.season.staffPin) S.season.staffPin = "1892";
+      if(!S.season.postes) S.season.postes = ["Pilier","Talonneur","2ème ligne","3ème ligne","Demi de mêlée","Demi d'ouverture","Centre","Ailier","Arrière"];
+      if(!S.season.categories) S.season.categories = ["M16F","M16G","M18F","M18G"];
+      if(!S.season.terrains) S.season.terrains = ["Terrain 5 Bachelard","Terrain 6 Bachelard","Annexe Lesdiguière","Terrain d'honneur","Salle Liénard","Halle"];
+      if(!S.season.seasonStart) S.season.seasonStart = "2026-09-01";
+      if(!S.season.seasonEnd) S.season.seasonEnd = "2027-06-30";
+      if(!S.season.playerAbsences) S.season.playerAbsences = [];
+      if(!S.season.staffAbsences) S.season.staffAbsences = [];
+      S.season.roster.forEach(function(p){
+        if(p.poste===undefined) p.poste = "";
+        if(p.sexe===undefined) p.sexe = "";
+        if(p.categorie===undefined){ p.categorie = p.anneeNaissance || ""; delete p.anneeNaissance; }
+      });
+      S.season.days.forEach(function(d){ d.slots.forEach(function(s){ s.groups.forEach(function(g){
+        if(g.terrain===undefined) g.terrain = "";
+        if(g.coachIds===undefined){
+          g.coachIds = g.coachId ? [g.coachId] : [];
+          delete g.coachId;
+        }
+      });});});
+    }catch(e){
+      console.error(e);
+      S.season = defaultSeason();
+      toast("Connexion au serveur impossible — données de démarrage affichées.");
+    }
+    try{
+      var raw = localStorage.getItem(PREFS_KEY);
+      S.prefs = raw ? JSON.parse(raw) : defaultPrefs();
+      if(S.prefs.coachId === undefined) S.prefs.coachId = null;
+    }catch(e){
+      S.prefs = defaultPrefs();
+    }
+    if(S.prefs.role === "player" && S.prefs.playerId && findPlayer(S.prefs.playerId)){
+      S.screen = "player-view";
+    } else if(S.prefs.role === "staff" && S.prefs.staffAuthed){
+      if(S.prefs.coachId && findCoach(S.prefs.coachId)){ S.screen = "staff-dashboard"; }
+      else { S.screen = "coach-select"; }
+    } else if(S.prefs.role === "admin" && S.prefs.adminAuthed){
+      S.screen = "admin";
+    } else {
+      S.screen = "landing";
+    }
+    render();
+  }
+
+  var saveTimer = null;
+  function saveSeason(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async function(){
+      try{ await seasonDocRef.set({ payload: JSON.stringify(S.season) }); }
+      catch(e){ toast("Erreur de sauvegarde, vérifie ta connexion internet."); }
+    }, 250);
+  }
+  function savePrefs(){
+    try{ localStorage.setItem(PREFS_KEY, JSON.stringify(S.prefs)); }catch(e){}
+  }
+
+  function findPlayer(id){
+    for(var i=0;i<S.season.roster.length;i++){ if(S.season.roster[i].id===id) return S.season.roster[i]; }
+    return null;
+  }
+  function findCoach(id){
+    for(var i=0;i<S.season.coaches.length;i++){ if(S.season.coaches[i].id===id) return S.season.coaches[i]; }
+    return null;
+  }
+  function coachNamesForGroup(g){
+    return (g.coachIds||[]).map(function(cid){ var c=findCoach(cid); return c?c.name:null; }).filter(Boolean);
+  }
+  function findDay(id){
+    for(var i=0;i<S.season.days.length;i++){ if(S.season.days[i].id===id) return S.season.days[i]; }
+    return null;
+  }
+  function findSlot(dayId, slotId){
+    var d = findDay(dayId); if(!d) return null;
+    for(var i=0;i<d.slots.length;i++){ if(d.slots[i].id===slotId) return d.slots[i]; }
+    return null;
+  }
+  function findGroup(dayId, slotId, groupId){
+    var sl = findSlot(dayId, slotId); if(!sl) return null;
+    for(var i=0;i<sl.groups.length;i++){ if(sl.groups[i].id===groupId) return sl.groups[i]; }
+    return null;
+  }
+
+  function filteredRoster(query, statut, poste, sexe, categorie){
+    var q = (query||"").toLowerCase().trim();
+    var order = { "P1":0, "P2":1, "P3":2, "":3 };
+    var list = S.season.roster.slice().sort(function(a,b){
+      var oa = order[a.statut||""], ob = order[b.statut||""];
+      if(oa !== ob) return oa - ob;
+      return a.name.localeCompare(b.name,'fr');
+    });
+    if(q) list = list.filter(function(p){ return p.name.toLowerCase().indexOf(q)!==-1; });
+    if(statut) list = list.filter(function(p){ return (p.statut||"") === statut; });
+    if(poste) list = list.filter(function(p){ return (p.poste||"") === poste; });
+    if(sexe) list = list.filter(function(p){ return (p.sexe||"") === sexe; });
+    if(categorie) list = list.filter(function(p){ return (p.categorie||"") === categorie; });
+    return list;
+  }
+
+  function renderTriSelects(scope, key, values){
+    values = values || {};
+    function opt(list, cur){
+      return list.map(function(o){
+        return '<option value="'+esc(o[0])+'" '+((cur||"")===o[0]?"selected":"")+'>'+esc(o[1])+'</option>';
+      }).join("");
+    }
+    var statutOpts = opt([["","Tous statuts"],["P1","P1"],["P2","P2"],["P3","P3"]], values.statut);
+    var sexeOpts = opt([["","Tous sexes"],["F","Filles"],["M","Garçons"]], values.sexe);
+    var catList = [["","Toutes catégories"]].concat(S.season.categories.map(function(c){ return [c, c]; }));
+    var catOpts = opt(catList, values.categorie);
+    var keyAttr = key ? ' data-key="'+key+'"' : '';
+    return '<div class="tri-select-row">' +
+      '<select data-tri="statut" data-scope="'+scope+'"'+keyAttr+'>'+statutOpts+'</select>' +
+      '<select data-tri="sexe" data-scope="'+scope+'"'+keyAttr+'>'+sexeOpts+'</select>' +
+      '<select data-tri="categorie" data-scope="'+scope+'"'+keyAttr+'>'+catOpts+'</select>' +
+    '</div>';
+  }
+
+  function renderStatusChips(scope, current, key){
+    var opts = [["","Tous"],["P1","P1"],["P2","P2"],["P3","P3"]];
+    return '<div class="quick-jump">' + opts.map(function(o){
+      var active = (current||"") === o[0];
+      return '<button class="quick-jump-chip '+(active?"active":"")+'" data-action="set-status-filter" data-scope="'+scope+'" '+(key?'data-key="'+key+'"':'')+' data-value="'+o[0]+'">'+o[1]+'</button>';
+    }).join("") + '</div>';
+  }
+
+  function renderPosteChips(scope, current, key){
+    var opts = [["","Tous postes"]].concat(S.season.postes.map(function(p){ return [p,p]; }));
+    return '<div class="quick-jump">' + opts.map(function(o){
+      var active = (current||"") === o[0];
+      return '<button class="quick-jump-chip '+(active?"active":"")+'" data-action="set-poste-filter" data-scope="'+scope+'" '+(key?'data-key="'+key+'"':'')+' data-value="'+esc(o[0])+'">'+esc(o[1])+'</button>';
+    }).join("") + '</div>';
+  }
+
+  /* ---------------- DATES / CALENDRIER ---------------- */
+  var WEEKDAY_MAP = { "dimanche":0,"lundi":1,"mardi":2,"mercredi":3,"jeudi":4,"vendredi":5,"samedi":6 };
+  function todayISO(){
+    var d = new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function fmtDateFR(iso){
+    if(!iso) return "";
+    var parts = iso.split("-");
+    if(parts.length!==3) return iso;
+    return parts[2]+"/"+parts[1]+"/"+parts[0];
+  }
+  function weekdayIndexForDayName(name){
+    var key = (name||"").trim().toLowerCase();
+    return (key in WEEKDAY_MAP) ? WEEKDAY_MAP[key] : null;
+  }
+  function nextOccurrence(dayName){
+    var idx = weekdayIndexForDayName(dayName);
+    if(idx===null) return todayISO();
+    var d = new Date();
+    var cur = d.getDay();
+    var diff = (idx - cur + 7) % 7;
+    if(diff===0) diff = 7;
+    d.setDate(d.getDate()+diff);
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  function mondayOfWeek(iso){
+    var d = new Date(iso+"T00:00:00");
+    var day = d.getDay();
+    var diff = (day===0? -6 : 1-day);
+    d.setDate(d.getDate()+diff);
+    return d;
+  }
+  function isThisWeek(iso){
+    if(!iso) return false;
+    var mon = mondayOfWeek(todayISO());
+    var sun = new Date(mon); sun.setDate(sun.getDate()+6);
+    var target = new Date(iso+"T00:00:00");
+    return target >= mon && target <= sun;
+  }
+  function trimesterOf(iso){
+    if(!iso) return 0;
+    var m = parseInt(iso.split("-")[1],10);
+    if(m>=9 && m<=12) return 1;
+    if(m>=1 && m<=3) return 2;
+    if(m>=4 && m<=7) return 3;
+    return 0;
+  }
+
+  function syncPresence(g){
+    if(!g) return;
+    g.presentIds = g.presentIds || [];
+    var ids = g.playerIds || [];
+    g.presentIds = g.presentIds.filter(function(pid){ return ids.indexOf(pid) !== -1; });
+  }
+
+  function renderPresenceBlock(dayId, slotId, g){
+    var assigned = (g.playerIds||[]).map(function(pid){ return findPlayer(pid); }).filter(Boolean);
+    if(!assigned.length) return "";
+    var presentIds = g.presentIds || [];
+    var presentCount = assigned.filter(function(p){ return presentIds.indexOf(p.id)!==-1; }).length;
+    var chips = assigned.map(function(p){
+      var checked = presentIds.indexOf(p.id) !== -1;
+      return '<button class="presence-chip '+(checked?"present":"")+'" data-action="toggle-presence" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-pid="'+p.id+'">' +
+        '<span class="pc-dot">'+(checked?ICONS.check:'')+'</span>'+esc(p.name) +
+      '</button>';
+    }).join("");
+    return '<div class="presence-block">' +
+      '<div class="presence-head"><span>Présences <strong>'+presentCount+'/'+assigned.length+'</strong></span>' +
+        (presentCount>0 ? '<button class="presence-reset" data-action="reset-presence" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'">Réinitialiser</button>' : '') +
+      '</div>' +
+      '<div class="presence-chips">'+chips+'</div>' +
+    '</div>';
+  }
+
+
+
+  var toastTimer=null;
+  function toast(msg){
+    var el = document.getElementById("toast");
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ el.classList.remove("show"); }, 2200);
+  }
+
+  function esc(s){
+    return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  /* ---------------- ICONS ---------------- */
+  var ICONS = {
+    ball: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9" ry="6.2" transform="rotate(-40 12 12)"/><path d="M7.5 7.5 L16.5 16.5"/><path d="M9 6.4 L9.6 8.6 M6.4 9 L8.6 9.6 M15 17.6 L14.4 15.4 M17.6 15 L15.4 14.4"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="9.5" r="2.3"/><path d="M15.3 14.2c2.4.3 4.2 2.1 4.2 4.8"/></svg>',
+    whistle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="14" r="5"/><path d="M13.5 11 L19 6 M19 6h-4V4h6v4"/><path d="M9 14h0"/></svg>',
+    sliders: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h9M17 6h3M4 12h3M9 12h11M4 18h13M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.8A.8.8 0 019.8 4h4.4a.8.8 0 01.8.8V7M6.5 7l.8 12a2 2 0 002 1.8h5.4a2 2 0 002-1.8l.8-12"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0112 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10z"/><path d="M10 18.5a2 2 0 004 0"/></svg>',
+    calendarX: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9.5 14.5l5 5M14.5 14.5l-5 5"/></svg>'
+  };
+
+  /* ---------------- RENDER ROOT ---------------- */
+  function render(){
+    var app = document.getElementById("app");
+    var html = "";
+    if(S.screen === "landing") html = renderLanding();
+    else if(S.screen === "player-select") html = renderPlayerSelect();
+    else if(S.screen === "player-view") html = renderPlayerView();
+    else if(S.screen === "pin-entry") html = renderPinEntry();
+    else if(S.screen === "coach-select") html = renderCoachSelect();
+    else if(S.screen === "staff-dashboard") html = renderStaffDashboard();
+    else if(S.screen === "admin") html = renderStaff();
+    app.classList.toggle("app-wide", S.screen === "admin" && S.staffTab === "planning");
+    app.innerHTML = html + '<div class="toast" id="toast"></div>';
+    var pinInput = document.getElementById("pin-input-el");
+    if(pinInput) pinInput.focus();
+    var searchInput = document.getElementById("search-input-el");
+    if(searchInput && S.__focusSearch){ searchInput.focus(); S.__focusSearch=false; }
+    if(S.scrollToDay){
+      var target = document.getElementById("day-"+S.scrollToDay);
+      if(target) target.scrollIntoView({behavior:"smooth", block:"start"});
+      S.scrollToDay = null;
+    }
+  }
+
+  /* ---------------- LANDING ---------------- */
+  function renderLanding(){
+    return '' +
+    '<div class="landing">' +
+      '<div class="landing-top">' +
+        '<div class="ball-mark" style="color:var(--chalk)">'+ICONS.ball+'</div>' +
+        '<h1>Planning<br>Entraînements<br>Structures FCG</h1>' +
+        '<div class="sub">Le planning des entraînements des structures du FC Grenoble Rugby, toujours à jour, dans ta poche.</div>' +
+      '</div>' +
+      '<div class="landing-actions">' +
+        '<button class="role-btn" data-action="go-player-select">' +
+          '<div class="rb-icon">'+ICONS.users+'</div>' +
+          '<div><div class="rb-title">Je suis joueur</div><div class="rb-sub">Voir mon planning perso</div></div>' +
+        '</button>' +
+        '<button class="role-btn staff" data-action="go-staff-pin">' +
+          '<div class="rb-icon">'+ICONS.whistle+'</div>' +
+          '<div><div class="rb-title">Je suis staff</div><div class="rb-sub">Consulter le planning complet</div></div>' +
+        '</button>' +
+      '</div>' +
+      '<button class="landing-foot" data-action="go-admin-pin">FC Grenoble Rugby · Saison 2026–2027</button>' +
+    '</div>';
+  }
+
+  /* ---------------- PLAYER SELECT ---------------- */
+  function renderPlayerSelect(){
+    var list = filteredRoster(S.filters.playerQuery, S.filters.playerStatusFilter);
+    var items = list.map(function(p){
+      return '<button class="roster-item" data-action="pick-player" data-id="'+p.id+'">' +
+        '<span class="ri-name">'+esc(p.name)+'</span>' +
+      '</button>';
+    }).join("");
+    if(!list.length) items = '<div class="muted" style="padding:20px 4px;font-size:13.5px;">Aucun joueur trouvé.</div>';
+    return '' +
+    '<div class="topbar">' +
+      '<button class="tb-back" data-action="go-landing">'+ICONS.back+'</button>' +
+      '<div class="tb-text"><div class="tb-title">Qui es-tu ?</div><div class="tb-sub">Cherche ton nom dans l\'effectif</div></div>' +
+    '</div>' +
+    '<div class="content">' +
+      '<div class="search-wrap">' +
+        '<span class="search-icon">'+ICONS.search+'</span>' +
+        '<input id="search-input-el" class="search-input" placeholder="Nom, prénom…" value="'+esc(S.filters.playerQuery||"")+'" data-field="playerQuery">' +
+      '</div>' +
+      '<div class="roster-list">'+items+'</div>' +
+    '</div>';
+  }
+
+
+  /* ---------------- PLAYER VIEW ---------------- */
+  function slotHasGroupWithPlayer(slot, playerId){
+    for(var i=0;i<slot.groups.length;i++){
+      if(slot.groups[i].playerIds && slot.groups[i].playerIds.indexOf(playerId) !== -1) return slot.groups[i];
+    }
+    return null;
+  }
+
+  function periodLabel(timeStr){
+    var m = /(\d{1,2})\s*[hH]/.exec(timeStr||"");
+    var hour = m ? parseInt(m[1],10) : null;
+    if(hour===null) return "Horaires";
+    return hour < 13 ? "Matinée" : "Après-midi";
+  }
+
+  function renderPlayerDayTable(day, player){
+    var periods = [];
+    day.slots.forEach(function(slot){
+      var lbl = periodLabel(slot.time);
+      var grp = periods.filter(function(p){return p.label===lbl;})[0];
+      if(!grp){ grp = {label:lbl, slots:[]}; periods.push(grp); }
+      grp.slots.push(slot);
+    });
+    if(!periods.length) return null;
+    var html = periods.map(function(per){
+      var headerCells = per.slots.map(function(s){
+        return '<th>'+esc(s.label)+'<br><span class="th-time">'+esc(s.time)+'</span></th>';
+      }).join("");
+      var dataCells = per.slots.map(function(s){
+        var g = slotHasGroupWithPlayer(s, player.id);
+        if(!g) return '<td><span class="cell-empty">Libre</span></td>';
+        var coachNames = coachNamesForGroup(g);
+        return '<td><div class="cell-atelier">'+esc(g.name||"Atelier")+'</div>'+(coachNames.length?'<div class="cell-coach">'+esc(coachNames.join(", "))+'</div>':'')+(g.terrain?'<div class="cell-terrain">'+esc(g.terrain)+'</div>':'')+'</td>';
+      }).join("");
+      return '<div class="day-table-wrap"><table class="day-table">' +
+        '<tr><th class="period-label">'+esc(per.label)+'</th>'+headerCells+'</tr>' +
+        '<tr><td class="period-label">'+esc(per.label)+'</td>'+dataCells+'</tr>' +
+      '</table></div>';
+    }).join("");
+    return html;
+  }
+
+  function renderPlayerView(){
+    var player = findPlayer(S.prefs.playerId);
+    if(!player){ S.screen = "player-select"; return renderPlayerSelect(); }
+    var showAll = S.staffTab === "team";
+
+    var body = "";
+    if(showAll){
+      S.season.days.forEach(function(day){
+        var anyFound = false;
+        var slotsHtml = day.slots.map(function(slot){
+          if(!slot.groups.length) return "";
+          var groupsHtml = slot.groups.map(function(g){
+            var coachNames2 = coachNamesForGroup(g);
+            var names = (g.playerIds||[]).map(function(pid){ var pl=findPlayer(pid); return pl?pl.name:""; }).filter(Boolean);
+            return '<div class="group-card">' +
+              '<div class="gc-name">'+esc(g.name||"Atelier")+'</div>' +
+              (coachNames2.length ? '<div class="gc-coach">'+esc(coachNames2.join(", "))+'</div>' : '') +
+              (g.terrain ? '<div class="gc-terrain">'+esc(g.terrain)+'</div>' : '') +
+              '<div class="gc-players">'+(names.length?esc(names.join(", ")):'<span class="muted">Aucun joueur assigné</span>')+'</div>' +
+            '</div>';
+          }).join("");
+          anyFound = true;
+          return '<div class="slot-card"><div class="slot-time">'+esc(slot.label)+' · '+esc(slot.time)+'</div>'+groupsHtml+'</div>';
+        }).join("");
+        body += '<div class="day-block">' +
+          '<div class="day-head">'+esc(day.name)+(anyFound?'':' <span class="dh-count">journée libre</span>')+'</div>' +
+          (anyFound ? '<div class="timeline">'+slotsHtml+'</div>' : '') +
+        '</div>';
+      });
+    } else {
+      S.season.days.forEach(function(day){
+        var tableHtml = renderPlayerDayTable(day, player);
+        body += '<div class="day-block">' +
+          '<div class="day-head">'+esc(day.name)+'</div>' +
+          (tableHtml || '<div class="empty-day">Aucun créneau ce jour-là.</div>') +
+        '</div>';
+      });
+    }
+
+    var absencesHtml = "";
+    if(!showAll){
+      var eligibleDays = S.season.days.filter(function(day){
+        return day.slots.some(function(slot){ return slotHasGroupWithPlayer(slot, player.id); });
+      });
+      var myAbsences = S.season.playerAbsences.filter(function(a){ return a.playerId===player.id && a.date >= todayISO(); })
+        .sort(function(a,b){ return a.date.localeCompare(b.date); });
+      var absRows = myAbsences.map(function(a){
+        var d = findDay(a.dayId);
+        return '<div class="absence-item">' +
+          '<div class="absence-item-main">' +
+            '<div class="absence-item-date">'+fmtDateFR(a.date)+(d?' · '+esc(d.name):'')+'</div>' +
+            (a.note ? '<div class="absence-item-note">'+esc(a.note)+'</div>' : '') +
+          '</div>' +
+          '<button class="icon-btn danger" data-action="delete-player-absence" data-id="'+a.id+'">'+ICONS.trash+'</button>' +
+        '</div>';
+      }).join("");
+      if(!absRows) absRows = '<div class="muted" style="padding:4px 4px 14px;font-size:13px;">Aucune absence prévue.</div>';
+
+      var dayOptions = '<option value="">Choisir…</option>' + eligibleDays.map(function(d){
+        return '<option value="'+d.id+'" '+(S.newAbsenceDayId===d.id?"selected":"")+'>'+esc(d.name)+'</option>';
+      }).join("");
+
+      absencesHtml = '<div class="day-block">' +
+        '<div class="day-head" style="font-size:20px;">Mes absences à venir</div>' +
+        absRows +
+        (eligibleDays.length ? (
+          '<div class="absence-form">' +
+            '<div class="form-row"><label>Jour d\'atelier</label><select data-field="newAbsenceDayId">'+dayOptions+'</select></div>' +
+            (S.newAbsenceDayId ? '<div class="form-row"><label>Date</label><input type="date" min="'+todayISO()+'" max="'+esc(S.season.seasonEnd)+'" value="'+esc(S.newAbsenceDate||"")+'" data-field="newAbsenceDate"></div>' : '') +
+            '<div class="form-row"><label>Précision (optionnel)</label><input placeholder="Ex : blessure, examen…" value="'+esc(S.newAbsenceNote||"")+'" data-field="newAbsenceNote"></div>' +
+            '<button class="primary-btn ghost" data-action="add-player-absence">Signaler cette absence</button>' +
+          '</div>'
+        ) : '') +
+      '</div>';
+    }
+
+    return '' +
+    '<div class="topbar">' +
+      '<div class="tb-text">' +
+        '<div class="tb-title">'+(showAll?"Toute l'équipe":esc(player.name))+'</div>' +
+        '<div class="tb-sub">'+(showAll?"Planning complet de la semaine":"Ton planning de la semaine")+'</div>' +
+      '</div>' +
+      '<button class="tb-action" data-action="change-player">Changer</button>' +
+    '</div>' +
+    '<div class="content">'+body+absencesHtml+'</div>' +
+    '<div class="bottom-nav">' +
+      '<button class="nav-btn '+(S.staffTab!=="team"?"active":"")+'" data-action="pv-tab" data-tab="mine">'+ICONS.calendar+'<span>Mon planning</span></button>' +
+      '<button class="nav-btn '+(S.staffTab==="team"?"active":"")+'" data-action="pv-tab" data-tab="team">'+ICONS.users+'<span>Toute l\'équipe</span></button>' +
+    '</div>';
+  }
+
+  /* ---------------- PIN ENTRY (générique) ---------------- */
+  function renderPinEntry(){
+    var isAdmin = S.pinTarget === "admin";
+    return '' +
+    '<div class="topbar">' +
+      '<button class="tb-back" data-action="go-landing">'+ICONS.back+'</button>' +
+      '<div class="tb-text"><div class="tb-title">'+(isAdmin?"Espace administrateur":"Espace staff")+'</div><div class="tb-sub">Entre le code d\'accès</div></div>' +
+    '</div>' +
+    '<div class="content">' +
+      '<div class="pin-wrap">' +
+        '<input id="pin-input-el" class="pin-input" inputmode="numeric" maxlength="8" placeholder="••••" value="'+esc(S.pinValue)+'" data-field="pinValue">' +
+        (S.pinError ? '<div class="pin-error">'+esc(S.pinError)+'</div>' : '') +
+        '<button class="primary-btn" data-action="pin-submit">Entrer</button>' +
+        (isAdmin ?
+          '<div class="pin-hint">Code admin par défaut : <strong>2027</strong>. Modifiable ensuite dans Réglages. Cet espace vous est réservé.</div>' :
+          '<div class="pin-hint">Code par défaut : <strong>1892</strong>. Modifiable par l\'administrateur dans Réglages.</div>') +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ---------------- COACH SELECT ---------------- */
+  function renderCoachSelect(){
+    var list = S.season.coaches.slice().sort(function(a,b){return a.name.localeCompare(b.name,'fr');});
+    var items = list.map(function(c){
+      return '<button class="roster-item" data-action="pick-coach" data-id="'+c.id+'">' +
+        '<span class="ri-name">'+esc(c.name)+'</span>' +
+      '</button>';
+    }).join("");
+    if(!list.length) items = '<div class="muted" style="padding:20px 4px;font-size:13.5px;">Aucun coach enregistré — contacte l\'administrateur.</div>';
+    return '' +
+    '<div class="topbar">' +
+      '<button class="tb-back" data-action="go-landing">'+ICONS.back+'</button>' +
+      '<div class="tb-text"><div class="tb-title">Qui es-tu ?</div><div class="tb-sub">Choisis ton nom dans le staff</div></div>' +
+    '</div>' +
+    '<div class="content"><div class="roster-list">'+items+'</div></div>';
+  }
+
+  /* ---------------- STAFF DASHBOARD ---------------- */
+  function renderStaffDashboard(){
+    var coach = findCoach(S.prefs.coachId);
+    if(!coach){ S.screen = "coach-select"; return renderCoachSelect(); }
+    var tab = S.staffDashTab || "mine";
+    var body = tab==="mine" ? renderStaffMine(coach) : tab==="team" ? renderStaffTeamBody() : renderStaffAbsencesTab(coach);
+    return '' +
+    '<div class="topbar">' +
+      '<div class="tb-text"><div class="tb-title">'+esc(coach.name)+'</div><div class="tb-sub">Espace staff</div></div>' +
+      '<button class="tb-action" data-action="staff-logout">Quitter</button>' +
+    '</div>' +
+    '<div class="content">'+body+'</div>' +
+    '<div class="bottom-nav">' +
+      '<button class="nav-btn '+(tab==="mine"?"active":"")+'" data-action="staffdash-tab" data-tab="mine">'+ICONS.calendar+'<span>Mon planning</span></button>' +
+      '<button class="nav-btn '+(tab==="team"?"active":"")+'" data-action="staffdash-tab" data-tab="team">'+ICONS.users+'<span>Toute l\'équipe</span></button>' +
+      '<button class="nav-btn '+(tab==="absences"?"active":"")+'" data-action="staffdash-tab" data-tab="absences">'+ICONS.bell+'<span>Mes absences</span></button>' +
+    '</div>';
+  }
+
+  function myGroupsByDay(coachId){
+    return S.season.days.map(function(day){
+      var slots = day.slots.map(function(slot){
+        var groups = slot.groups.filter(function(g){ return (g.coachIds||[]).indexOf(coachId) !== -1; });
+        return { slot: slot, groups: groups };
+      }).filter(function(x){ return x.groups.length; });
+      return { day: day, slots: slots };
+    }).filter(function(x){ return x.slots.length; });
+  }
+
+  function renderStaffMine(coach){
+    var view = S.staffScheduleView || "week";
+    var myDays = myGroupsByDay(coach.id);
+    var toggle = '<div class="view-toggle">' +
+      '<button class="view-toggle-btn '+(view==="week"?"active":"")+'" data-action="set-schedule-view" data-view="week">Semaine</button>' +
+      '<button class="view-toggle-btn '+(view==="day"?"active":"")+'" data-action="set-schedule-view" data-view="day">Jour</button>' +
+    '</div>';
+
+    if(!myDays.length){
+      return toggle + '<div class="muted" style="padding:20px 4px;">Aucun atelier ne t\'est encore attribué. Demande à l\'administrateur de t\'assigner des créneaux.</div>';
+    }
+
+    var dayChips = "";
+    var daysToRender = myDays;
+    if(view === "day"){
+      var selectedDayId = S.staffSelectedDay || myDays[0].day.id;
+      if(!myDays.some(function(x){return x.day.id===selectedDayId;})) selectedDayId = myDays[0].day.id;
+      dayChips = '<div class="quick-jump">' + myDays.map(function(x){
+        return '<button class="quick-jump-chip '+(x.day.id===selectedDayId?"active":"")+'" data-action="pick-schedule-day" data-day="'+x.day.id+'">'+esc(x.day.name)+'</button>';
+      }).join("") + '</div>';
+      daysToRender = myDays.filter(function(x){return x.day.id===selectedDayId;});
+    }
+
+    var body = daysToRender.map(function(x){
+      var slotsHtml = x.slots.map(function(s){
+        var groupsHtml = s.groups.map(function(g){
+          var names = (g.playerIds||[]).map(function(pid){ var pl=findPlayer(pid); return pl?pl.name:""; }).filter(Boolean);
+          return '<div class="group-card">' +
+            '<div class="gc-name">'+esc(g.name||"Atelier")+'</div>' +
+            (g.terrain ? '<div class="gc-terrain">'+esc(g.terrain)+'</div>' : '') +
+            '<div class="gc-players">'+(names.length?esc(names.join(", ")):'<span class="muted">Aucun joueur assigné</span>')+'</div>' +
+            renderPresenceBlock(x.day.id, s.slot.id, g) +
+          '</div>';
+        }).join("");
+        return '<div class="slot-card"><div class="slot-time">'+esc(s.slot.label)+' · '+esc(s.slot.time)+'</div>'+groupsHtml+'</div>';
+      }).join("");
+      return '<div class="day-block"><div class="day-head">'+esc(x.day.name)+'</div><div class="timeline">'+slotsHtml+'</div></div>';
+    }).join("");
+
+    return toggle + dayChips + body;
+  }
+
+  function renderStaffTeamBody(){
+    var body = "";
+    S.season.days.forEach(function(day){
+      var slotsHtml = day.slots.filter(function(s){return s.groups.length;}).map(function(slot){
+        var groupsHtml = slot.groups.map(function(g){
+          var coachNames3 = coachNamesForGroup(g);
+          var names = (g.playerIds||[]).map(function(pid){ var pl=findPlayer(pid); return pl?pl.name:""; }).filter(Boolean);
+          return '<div class="group-card">' +
+            '<div class="gc-name">'+esc(g.name||"Atelier")+'</div>' +
+            (coachNames3.length ? '<div class="gc-coach">'+esc(coachNames3.join(", "))+'</div>' : '') +
+            (g.terrain ? '<div class="gc-terrain">'+esc(g.terrain)+'</div>' : '') +
+            '<div class="gc-players">'+(names.length?esc(names.join(", ")):'<span class="muted">Aucun joueur assigné</span>')+'</div>' +
+            renderPresenceBlock(day.id, slot.id, g) +
+          '</div>';
+        }).join("");
+        return '<div class="slot-card"><div class="slot-time">'+esc(slot.label)+' · '+esc(slot.time)+'</div>'+groupsHtml+'</div>';
+      }).join("");
+      var anyFound = day.slots.some(function(s){return s.groups.length;});
+      body += '<div class="day-block">' +
+        '<div class="day-head">'+esc(day.name)+(anyFound?'':' <span class="dh-count">rien de programmé</span>')+'</div>' +
+        (anyFound ? '<div class="timeline">'+slotsHtml+'</div>' : '') +
+      '</div>';
+    });
+    return body + '<div class="pin-hint" style="text-align:left;">Coche les présences si besoin — rien d\'obligatoire.</div>';
+  }
+
+  function renderStaffAbsencesTab(coach){
+    var mine = S.season.staffAbsences.filter(function(a){return a.coachId===coach.id;})
+      .sort(function(a,b){ return a.dateStart.localeCompare(b.dateStart); });
+    var rows = mine.map(function(a){
+      var range = a.dateEnd && a.dateEnd!==a.dateStart ? fmtDateFR(a.dateStart)+" → "+fmtDateFR(a.dateEnd) : fmtDateFR(a.dateStart);
+      return '<div class="absence-item">' +
+        '<div class="absence-item-main">' +
+          '<div class="absence-item-date">'+range+(isThisWeek(a.dateStart)||isThisWeek(a.dateEnd||a.dateStart)?' <span class="absence-badge">Cette semaine</span>':'')+'</div>' +
+          (a.note ? '<div class="absence-item-note">'+esc(a.note)+'</div>' : '') +
+        '</div>' +
+        '<button class="icon-btn danger" data-action="delete-staff-absence" data-id="'+a.id+'">'+ICONS.trash+'</button>' +
+      '</div>';
+    }).join("");
+    if(!mine.length) rows = '<div class="muted" style="padding:6px 4px 16px;font-size:13.5px;">Aucune absence prévue pour l\'instant.</div>';
+
+    return '' +
+      '<div class="section-title">Déclarer une absence à venir</div>' +
+      '<div class="absence-form">' +
+        '<div class="form-row"><label>Du</label><input type="date" min="'+todayISO()+'" max="'+esc(S.season.seasonEnd)+'" value="'+esc(S.newStaffAbsenceStart||"")+'" data-field="newStaffAbsenceStart"></div>' +
+        '<div class="form-row"><label>Au (optionnel, si plusieurs jours)</label><input type="date" min="'+todayISO()+'" max="'+esc(S.season.seasonEnd)+'" value="'+esc(S.newStaffAbsenceEnd||"")+'" data-field="newStaffAbsenceEnd"></div>' +
+        '<div class="form-row"><label>Précision (optionnel)</label><input placeholder="Ex : formation, congés…" value="'+esc(S.newStaffAbsenceNote||"")+'" data-field="newStaffAbsenceNote"></div>' +
+        '<button class="primary-btn" data-action="add-staff-absence">Déclarer cette absence</button>' +
+      '</div>' +
+      '<div class="section-title" style="margin-top:22px;">Mes absences déclarées</div>' +
+      rows +
+      '<div class="pin-hint" style="text-align:left;">L\'administrateur voit tes absences dans son espace, avec un repère pour celles qui tombent sur la semaine en cours.</div>';
+  }
+
+
+  /* ---------------- STAFF DASHBOARD ---------------- */
+  function renderStaff(){
+    var tabTitle = {planning:"Planning", roster:"Effectif", coaches:"Coachs", absences:"Absences", settings:"Réglages"}[S.staffTab] || "Planning";
+    var body = "";
+    if(S.staffTab === "planning") body = renderStaffPlanning();
+    else if(S.staffTab === "roster") body = renderStaffRoster();
+    else if(S.staffTab === "coaches") body = renderStaffCoaches();
+    else if(S.staffTab === "absences") body = renderAdminAbsences();
+    else if(S.staffTab === "settings") body = renderStaffSettings();
+
+    return '' +
+    '<div class="topbar">' +
+      '<div class="tb-text"><div class="tb-title">'+tabTitle+'</div><div class="tb-sub">Espace administrateur · FCG 26-27</div></div>' +
+      '<button class="tb-action" data-action="admin-logout">Quitter</button>' +
+    '</div>' +
+    '<div class="content">'+body+'</div>' +
+    '<div class="bottom-nav">' +
+      '<button class="nav-btn '+(S.staffTab==="planning"?"active":"")+'" data-action="staff-tab" data-tab="planning">'+ICONS.calendar+'<span>Planning</span></button>' +
+      '<button class="nav-btn '+(S.staffTab==="roster"?"active":"")+'" data-action="staff-tab" data-tab="roster">'+ICONS.users+'<span>Effectif</span></button>' +
+      '<button class="nav-btn '+(S.staffTab==="coaches"?"active":"")+'" data-action="staff-tab" data-tab="coaches">'+ICONS.whistle+'<span>Coachs</span></button>' +
+      '<button class="nav-btn '+(S.staffTab==="absences"?"active":"")+'" data-action="staff-tab" data-tab="absences">'+ICONS.bell+'<span>Absences</span></button>' +
+      '<button class="nav-btn '+(S.staffTab==="settings"?"active":"")+'" data-action="staff-tab" data-tab="settings">'+ICONS.sliders+'<span>Réglages</span></button>' +
+    '</div>';
+  }
+
+  function renderStaffPlanning(){
+    var quickJump = '<div class="quick-jump">' + S.season.days.map(function(day){
+      var active = !!S.openDays[day.id];
+      return '<button class="quick-jump-chip '+(active?"active":"")+'" data-action="quick-jump-day" data-day="'+day.id+'">'+esc(day.name)+'</button>';
+    }).join("") + '</div>';
+
+    var html = S.season.days.map(function(day){
+      var open = !!S.openDays[day.id];
+      var slotsHtml = day.slots.map(function(slot){
+        var groupsHtml = slot.groups.map(function(g){
+          return renderAtelierEdit(day.id, slot.id, g);
+        }).join("");
+        return '<div class="slot-edit">' +
+          '<div class="slot-edit-head">' +
+            '<input class="mini-input small" data-field="slot-label" data-day="'+day.id+'" data-slot="'+slot.id+'" value="'+esc(slot.label)+'" placeholder="Nom">' +
+            '<input class="mini-input" data-field="slot-time" data-day="'+day.id+'" data-slot="'+slot.id+'" value="'+esc(slot.time)+'" placeholder="Horaire">' +
+            '<button class="icon-btn danger" data-action="delete-slot" data-day="'+day.id+'" data-slot="'+slot.id+'">'+ICONS.trash+'</button>' +
+          '</div>' +
+          '<div class="atelier-row-flex">'+groupsHtml+'</div>' +
+          '<button class="add-btn" data-action="add-group" data-day="'+day.id+'" data-slot="'+slot.id+'">+ Ajouter un atelier</button>' +
+        '</div>';
+      }).join("");
+      return '<div class="day-accordion '+(open?"open":"")+'" id="day-'+day.id+'">' +
+        '<button class="day-accordion-head" data-action="toggle-day" data-day="'+day.id+'">' +
+          '<div><div class="dah-title">'+esc(day.name)+'</div><div class="dah-meta">'+day.slots.length+' créneau'+(day.slots.length>1?'x':'')+'</div></div>' +
+          '<span class="chevron">'+ICONS.chevron+'</span>' +
+        '</button>' +
+        '<div class="day-accordion-body">' +
+          slotsHtml +
+          '<button class="add-btn" data-action="add-slot" data-day="'+day.id+'">+ Ajouter un créneau</button>' +
+          '<button class="primary-btn danger" style="margin-top:14px;" data-action="delete-day" data-day="'+day.id+'">Supprimer ce jour</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    return '<div class="section-title">Jours d\'entraînement</div>' + quickJump + html +
+      '<div class="form-row" style="margin-top:16px;">' +
+        '<label>Ajouter un nouveau jour</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="mini-input" id="new-day-input" placeholder="Ex : Mercredi" value="'+esc(S.newDayName)+'" data-field="newDayName">' +
+          '<button class="icon-btn" style="width:44px;height:44px;color:var(--pitch);" data-action="add-day">'+ICONS.plus+'</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderAtelierEdit(dayId, slotId, g){
+    var pickerKey = dayId+"|"+slotId+"|"+g.id;
+    var pickerOpen = !!S.openPlayerPickers[pickerKey];
+    var coachPickerOpen = !!S.openCoachPickers[pickerKey];
+    var coachIds = g.coachIds || [];
+    var coachNames = coachIds.map(function(cid){ var c=findCoach(cid); return c?{id:c.id,name:c.name}:null; }).filter(Boolean);
+    var coachChips = coachNames.map(function(c){
+      return '<span class="chip">'+esc(c.name)+'<button data-action="remove-coach-from-group" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-cid="'+c.id+'">'+ICONS.x+'</button></span>';
+    }).join("");
+    var coachPickerHtml = "";
+    if(coachPickerOpen){
+      var coachItemsHtml = S.season.coaches.slice().sort(function(a,b){return a.name.localeCompare(b.name,'fr');}).map(function(c){
+        var checked = coachIds.indexOf(c.id) !== -1;
+        return '<label class="pp-item"><input type="checkbox" '+(checked?"checked":"")+' data-action="toggle-coach-group" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-cid="'+c.id+'"> '+esc(c.name)+'</label>';
+      }).join("");
+      coachPickerHtml = '<div class="player-picker">' +
+        '<div class="pp-list">'+(coachItemsHtml||'<div class="muted" style="padding:6px;font-size:12.5px;">Aucun coach enregistré</div>')+'</div>' +
+      '</div>';
+    }
+    var names = (g.playerIds||[]).map(function(pid){ var pl=findPlayer(pid); return pl?pl.name:null; }).filter(Boolean);
+    var chips = names.map(function(n,idx){
+      var pid = g.playerIds[idx];
+      return '<span class="chip">'+esc(n)+'<button data-action="remove-player-from-group" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-pid="'+pid+'">'+ICONS.x+'</button></span>';
+    }).join("");
+
+    var pickerHtml = "";
+    if(pickerOpen){
+      var q = S.filters["pp_"+pickerKey] || "";
+      var statusVal = S.filters["ppstatus_"+pickerKey] || "";
+      var posteVal = S.filters["ppposte_"+pickerKey] || "";
+      var sexeVal = S.filters["ppsexe_"+pickerKey] || "";
+      var catVal = S.filters["ppcategorie_"+pickerKey] || "";
+      var list = filteredRoster(q, statusVal, posteVal, sexeVal, catVal);
+      var allSelected = list.length > 0 && list.every(function(p){ return (g.playerIds||[]).indexOf(p.id) !== -1; });
+      var itemsHtml = list.map(function(p){
+        var checked = (g.playerIds||[]).indexOf(p.id) !== -1;
+        return '<label class="pp-item"><input type="checkbox" '+(checked?"checked":"")+' data-action="toggle-player-group" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-pid="'+p.id+'"> '+esc(p.name)+(p.statut?' <span class="pp-tag">'+esc(p.statut)+'</span>':'')+(p.poste?' <span class="pp-tag">'+esc(p.poste)+'</span>':'')+'</label>';
+      }).join("");
+      pickerHtml = '<div class="player-picker">' +
+        '<input class="pp-search" placeholder="Filtrer un joueur…" value="'+esc(q)+'" data-field="pp_'+pickerKey+'">' +
+        renderTriSelects("picker", pickerKey, {statut:statusVal, sexe:sexeVal, categorie:catVal}) +
+        renderPosteChips("picker", posteVal, pickerKey) +
+        '<button class="select-all-btn" data-action="select-all-players" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-q="'+esc(q)+'" data-status="'+esc(statusVal)+'" data-poste="'+esc(posteVal)+'" data-sexe="'+esc(sexeVal)+'" data-categorie="'+esc(catVal)+'">' +
+          (allSelected ? "Tout décocher" : "Tout cocher"+((q||statusVal||posteVal||sexeVal||catVal)?" (résultats filtrés)":" ("+list.length+" joueurs)")) +
+        '</button>' +
+        '<div class="pp-list">'+(itemsHtml||'<div class="muted" style="padding:6px;font-size:12.5px;">Aucun joueur</div>')+'</div>' +
+      '</div>';
+    }
+
+    var terrainOptions = '<option value="">— Aucun terrain —</option>' + S.season.terrains.map(function(t){
+      return '<option value="'+esc(t)+'" '+(g.terrain===t?"selected":"")+'>'+esc(t)+'</option>';
+    }).join("");
+
+    return '<div class="atelier-card">' +
+      '<div class="atelier-row">' +
+        '<input class="mini-input" data-field="group-name" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" value="'+esc(g.name)+'" placeholder="Nom de l\'atelier">' +
+        '<button class="icon-btn danger" data-action="delete-group" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'">'+ICONS.trash+'</button>' +
+      '</div>' +
+      (coachChips ? '<div class="chip-list">'+coachChips+'</div>' : '') +
+      '<button class="atelier-players-btn" data-action="toggle-coach-picker" data-key="'+pickerKey+'">'+(coachPickerOpen?"Fermer la liste":"+ Gérer les coachs ("+coachNames.length+")")+'</button>' +
+      coachPickerHtml +
+      '<select class="mini-input" style="width:100%;margin:7px 0;" data-field="group-terrain" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'">'+terrainOptions+'</select>' +
+      (chips ? '<div class="chip-list">'+chips+'</div>' : '') +
+      '<button class="atelier-players-btn" data-action="toggle-picker" data-key="'+pickerKey+'">'+(pickerOpen?"Fermer la liste":"+ Gérer les joueurs ("+names.length+")")+'</button>' +
+      pickerHtml +
+      renderPresenceBlock(dayId, slotId, g) +
+    '</div>';
+  }
+
+  function renderStaffRoster(){
+    var list = filteredRoster(S.filters.rosterQuery, S.filters.rosterStatusFilter, S.filters.rosterPosteFilter, S.filters.rosterSexeFilter, S.filters.rosterCategorieFilter);
+    var rows = list.map(function(p){
+      return '<div class="roster-edit-row">' +
+        '<input class="re-name" data-field="player-name" data-id="'+p.id+'" value="'+esc(p.name)+'" style="border:none;background:transparent;padding:0;">' +
+        '<select data-field="player-statut" data-id="'+p.id+'">' +
+          ['','P1','P2','P3'].map(function(opt){return '<option value="'+opt+'" '+(p.statut===opt?"selected":"")+'>'+(opt||"—")+'</option>';}).join("") +
+        '</select>' +
+        '<select data-field="player-poste" data-id="'+p.id+'">' +
+          ['<option value="">—</option>'].concat(S.season.postes.map(function(po){return '<option value="'+esc(po)+'" '+(p.poste===po?"selected":"")+'>'+esc(po)+'</option>';})).join("") +
+        '</select>' +
+        '<select data-field="player-sexe" data-id="'+p.id+'">' +
+          '<option value="" '+(!p.sexe?"selected":"")+'>—</option>' +
+          '<option value="F" '+(p.sexe==="F"?"selected":"")+'>F</option>' +
+          '<option value="M" '+(p.sexe==="M"?"selected":"")+'>M</option>' +
+        '</select>' +
+        '<select data-field="player-categorie" data-id="'+p.id+'">' +
+          ['<option value="">—</option>'].concat(S.season.categories.map(function(c){return '<option value="'+esc(c)+'" '+(p.categorie===c?"selected":"")+'>'+esc(c)+'</option>';})).join("") +
+        '</select>' +
+        '<button class="icon-btn danger" data-action="delete-player" data-id="'+p.id+'">'+ICONS.trash+'</button>' +
+      '</div>';
+    }).join("");
+    if(!list.length) rows = '<div class="muted" style="padding:10px 4px;font-size:13.5px;">Aucun joueur trouvé.</div>';
+    return '' +
+      '<div class="search-wrap"><span class="search-icon">'+ICONS.search+'</span>' +
+      '<input class="search-input" placeholder="Filtrer l\'effectif…" value="'+esc(S.filters.rosterQuery||"")+'" data-field="rosterQuery"></div>' +
+      renderTriSelects("roster", null, {statut:S.filters.rosterStatusFilter, sexe:S.filters.rosterSexeFilter, categorie:S.filters.rosterCategorieFilter}) +
+      renderPosteChips("roster", S.filters.rosterPosteFilter) +
+      '<div class="section-title">'+list.length+' / '+S.season.roster.length+' joueur(s)</div>' +
+      rows +
+      '<div class="form-row" style="margin-top:14px;">' +
+        '<label>Ajouter un joueur</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="mini-input" id="new-player-input" placeholder="Nom Prénom" value="'+esc(S.newPlayerName||"")+'" data-field="newPlayerName">' +
+          '<button class="icon-btn" style="width:44px;height:44px;color:var(--pitch);" data-action="add-player">'+ICONS.plus+'</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderStaffCoaches(){
+    var rows = S.season.coaches.map(function(c){
+      return '<div class="coach-edit-row">' +
+        '<input class="re-name" data-field="coach-name" data-id="'+c.id+'" value="'+esc(c.name)+'" style="border:none;background:transparent;padding:0;flex:1;">' +
+        '<button class="icon-btn danger" data-action="delete-coach" data-id="'+c.id+'">'+ICONS.trash+'</button>' +
+      '</div>';
+    }).join("");
+    return '' +
+      '<div class="section-title">'+S.season.coaches.length+' coach(s)</div>' +
+      rows +
+      '<div class="form-row" style="margin-top:14px;">' +
+        '<label>Ajouter un coach</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="mini-input" id="new-coach-input" placeholder="Nom Prénom" value="'+esc(S.newCoachName||"")+'" data-field="newCoachName">' +
+          '<button class="icon-btn" style="width:44px;height:44px;color:var(--pitch);" data-action="add-coach">'+ICONS.plus+'</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function renderAdminAbsences(){
+    var staffAbs = S.season.staffAbsences.slice().sort(function(a,b){return a.dateStart.localeCompare(b.dateStart);});
+    var staffRows = staffAbs.map(function(a){
+      var coach = findCoach(a.coachId);
+      var range = a.dateEnd && a.dateEnd!==a.dateStart ? fmtDateFR(a.dateStart)+" → "+fmtDateFR(a.dateEnd) : fmtDateFR(a.dateStart);
+      var thisWeek = isThisWeek(a.dateStart) || isThisWeek(a.dateEnd||a.dateStart);
+      return '<div class="absence-item">' +
+        '<div class="absence-item-main">' +
+          '<div class="absence-item-date">'+esc(coach?coach.name:"Coach inconnu")+' · '+range+(thisWeek?' <span class="absence-badge">Cette semaine</span>':'')+'</div>' +
+          (a.note ? '<div class="absence-item-note">'+esc(a.note)+'</div>' : '') +
+        '</div>' +
+        '<button class="icon-btn danger" data-action="delete-staff-absence" data-id="'+a.id+'">'+ICONS.trash+'</button>' +
+      '</div>';
+    }).join("");
+    if(!staffAbs.length) staffRows = '<div class="muted" style="padding:6px 4px 16px;font-size:13.5px;">Aucune absence de staff signalée.</div>';
+
+    var report = S.season.roster.map(function(p){
+      var mine = S.season.playerAbsences.filter(function(a){return a.playerId===p.id;});
+      var t1 = mine.filter(function(a){return trimesterOf(a.date)===1;}).length;
+      var t2 = mine.filter(function(a){return trimesterOf(a.date)===2;}).length;
+      var t3 = mine.filter(function(a){return trimesterOf(a.date)===3;}).length;
+      return { p:p, t1:t1, t2:t2, t3:t3, total: t1+t2+t3 };
+    }).sort(function(a,b){ return b.total - a.total || a.p.name.localeCompare(b.p.name,'fr'); });
+
+    var reportRows = report.filter(function(r){return r.total>0;}).map(function(r){
+      return '<div class="report-row">' +
+        '<div class="report-name">'+esc(r.p.name)+'</div>' +
+        '<div class="report-counts"><span>T1 <strong>'+r.t1+'</strong></span><span>T2 <strong>'+r.t2+'</strong></span><span>T3 <strong>'+r.t3+'</strong></span><span class="report-total">Total <strong>'+r.total+'</strong></span></div>' +
+      '</div>';
+    }).join("");
+    if(!reportRows) reportRows = '<div class="muted" style="padding:6px 4px 16px;font-size:13.5px;">Aucune absence de joueuse enregistrée pour l\'instant.</div>';
+
+    return '' +
+      '<div class="section-title">Absences du staff</div>' +
+      staffRows +
+      '<div class="section-title" style="margin-top:26px;">Absences des joueuses — par trimestre</div>' +
+      '<div class="pin-hint" style="text-align:left;margin-bottom:12px;">T1 : sept.–déc. · T2 : jan.–mars · T3 : avril–juillet. Seules les joueuses ayant déclaré au moins une absence apparaissent ci-dessous.</div>' +
+      reportRows +
+      '<button class="primary-btn ghost" style="margin-top:14px;" data-action="export-absences-csv">Exporter le rapport en CSV</button>';
+  }
+
+  function renderStaffSettings(){
+
+
+    return '' +
+      '<div class="section-title">Code administrateur (votre accès)</div>' +
+      '<div class="form-row">' +
+        '<label>Nouveau code admin</label>' +
+        '<input placeholder="'+esc(S.season.adminPin)+'" value="'+esc(S.newAdminPin||"")+'" data-field="newAdminPin">' +
+      '</div>' +
+      '<button class="primary-btn" data-action="save-admin-pin">Enregistrer le code admin</button>' +
+
+      '<div class="section-title" style="margin-top:26px;">Code staff (consultation seule)</div>' +
+      '<div class="form-row">' +
+        '<label>Nouveau code staff</label>' +
+        '<input placeholder="'+esc(S.season.staffPin)+'" value="'+esc(S.newStaffPin||"")+'" data-field="newStaffPin">' +
+      '</div>' +
+      '<button class="primary-btn" data-action="save-staff-pin">Enregistrer le code staff</button>' +
+
+      '<div class="pin-hint" style="text-align:left;margin-top:24px;">Le code admin donne accès à ce backoffice complet — gardez-le pour vous. Le code staff n\'ouvre qu\'une vue lecture seule du planning, à partager avec les coachs.</div>' +
+
+      '<div class="section-title" style="margin-top:26px;">Saison</div>' +
+      '<div class="form-row"><label>Début de saison</label><input type="date" value="'+esc(S.newSeasonStart||S.season.seasonStart)+'" data-field="newSeasonStart"></div>' +
+      '<div class="form-row"><label>Fin de saison</label><input type="date" value="'+esc(S.newSeasonEnd||S.season.seasonEnd)+'" data-field="newSeasonEnd"></div>' +
+      '<button class="primary-btn" data-action="save-season-dates">Enregistrer les dates de saison</button>' +
+      '<div class="pin-hint" style="text-align:left;margin-top:10px;">Ces dates encadrent les absences que joueuses et staff peuvent déclarer.</div>' +
+
+      '<div class="section-title" style="margin-top:26px;">Postes</div>' +
+      S.season.postes.map(function(po,idx){
+        return '<div class="coach-edit-row"><span class="re-name">'+esc(po)+'</span><button class="icon-btn danger" data-action="delete-poste" data-index="'+idx+'">'+ICONS.trash+'</button></div>';
+      }).join("") +
+      '<div class="form-row" style="margin-top:10px;">' +
+        '<label>Ajouter un poste</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="mini-input" placeholder="Ex : Ouvreur bis" value="'+esc(S.newPosteName||"")+'" data-field="newPosteName">' +
+          '<button class="icon-btn" style="width:44px;height:44px;color:var(--pitch);" data-action="add-poste">'+ICONS.plus+'</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="section-title" style="margin-top:26px;">Catégories</div>' +
+      S.season.categories.map(function(c,idx){
+        return '<div class="coach-edit-row"><span class="re-name">'+esc(c)+'</span><button class="icon-btn danger" data-action="delete-categorie" data-index="'+idx+'">'+ICONS.trash+'</button></div>';
+      }).join("") +
+      '<div class="form-row" style="margin-top:10px;">' +
+        '<label>Ajouter une catégorie</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="mini-input" placeholder="Ex : Seniors F" value="'+esc(S.newCategorieName||"")+'" data-field="newCategorieName">' +
+          '<button class="icon-btn" style="width:44px;height:44px;color:var(--pitch);" data-action="add-categorie">'+ICONS.plus+'</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="section-title" style="margin-top:26px;">Terrains</div>' +
+      S.season.terrains.map(function(t,idx){
+        return '<div class="coach-edit-row"><span class="re-name">'+esc(t)+'</span><button class="icon-btn danger" data-action="delete-terrain" data-index="'+idx+'">'+ICONS.trash+'</button></div>';
+      }).join("") +
+      '<div class="form-row" style="margin-top:10px;">' +
+        '<label>Ajouter un terrain</label>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<input class="mini-input" placeholder="Ex : Terrain 3" value="'+esc(S.newTerrainName||"")+'" data-field="newTerrainName">' +
+          '<button class="icon-btn" style="width:44px;height:44px;color:var(--pitch);" data-action="add-terrain">'+ICONS.plus+'</button>' +
+        '</div>' +
+      '</div>';
+  }
+
+  /* ---------------- EVENTS ---------------- */
+  document.addEventListener("DOMContentLoaded", function(){
+    var app = document.getElementById("app");
+
+    app.addEventListener("click", function(e){
+      var el = e.target.closest("[data-action]");
+      if(!el) return;
+      var action = el.getAttribute("data-action");
+
+      if(action === "go-landing"){ S.screen = "landing"; return render(); }
+      if(action === "go-player-select"){ S.screen = "player-select"; S.filters.playerQuery=""; S.__focusSearch=true; return render(); }
+      if(action === "go-staff-pin"){ S.screen = "pin-entry"; S.pinTarget = "staff"; S.pinValue=""; S.pinError=""; return render(); }
+      if(action === "go-admin-pin"){ S.screen = "pin-entry"; S.pinTarget = "admin"; S.pinValue=""; S.pinError=""; return render(); }
+
+      if(action === "pick-player"){
+        var id = el.getAttribute("data-id");
+        S.prefs.role = "player"; S.prefs.playerId = id;
+        savePrefs();
+        S.screen = "player-view"; S.staffTab = "mine";
+        return render();
+      }
+      if(action === "change-player"){
+        S.prefs.role = null; S.prefs.playerId = null; savePrefs();
+        S.screen = "landing"; return render();
+      }
+      if(action === "pv-tab"){ S.staffTab = el.getAttribute("data-tab"); return render(); }
+
+      if(action === "pin-submit"){
+        if(S.pinTarget === "admin"){
+          if((S.pinValue||"").trim() === S.season.adminPin){
+            S.prefs.role = "admin"; S.prefs.adminAuthed = true; savePrefs();
+            S.screen = "admin"; S.staffTab = "planning"; S.pinError="";
+            return render();
+          } else { S.pinError = "Code incorrect, réessaie."; return render(); }
+        } else {
+          if((S.pinValue||"").trim() === S.season.staffPin){
+            S.prefs.role = "staff"; S.prefs.staffAuthed = true; savePrefs();
+            S.screen = (S.prefs.coachId && findCoach(S.prefs.coachId)) ? "staff-dashboard" : "coach-select";
+            S.pinError="";
+            return render();
+          } else { S.pinError = "Code incorrect, réessaie."; return render(); }
+        }
+      }
+      if(action === "pick-coach"){
+        S.prefs.coachId = el.getAttribute("data-id"); savePrefs();
+        S.screen = "staff-dashboard"; S.staffDashTab = "mine";
+        return render();
+      }
+      if(action === "staffdash-tab"){ S.staffDashTab = el.getAttribute("data-tab"); return render(); }
+      if(action === "set-schedule-view"){ S.staffScheduleView = el.getAttribute("data-view"); return render(); }
+      if(action === "pick-schedule-day"){ S.staffSelectedDay = el.getAttribute("data-day"); return render(); }
+      if(action === "add-staff-absence"){
+        var st = (S.newStaffAbsenceStart||"").trim();
+        if(!st){ toast("Choisis au moins une date de début."); return; }
+        var coach0 = findCoach(S.prefs.coachId);
+        if(!coach0) return;
+        S.season.staffAbsences.push({
+          id: nid("ab"), coachId: coach0.id, dateStart: st,
+          dateEnd: (S.newStaffAbsenceEnd||"").trim() || st,
+          note: (S.newStaffAbsenceNote||"").trim(), createdAt: todayISO()
+        });
+        S.newStaffAbsenceStart=""; S.newStaffAbsenceEnd=""; S.newStaffAbsenceNote="";
+        saveSeason(); toast("Absence déclarée");
+        return render();
+      }
+      if(action === "delete-staff-absence"){
+        var abId = el.getAttribute("data-id");
+        S.season.staffAbsences = S.season.staffAbsences.filter(function(a){return a.id!==abId;});
+        saveSeason(); toast("Absence supprimée");
+        return render();
+      }
+      if(action === "staff-logout"){
+        S.prefs.role = null; S.prefs.staffAuthed = false; S.prefs.coachId = null; savePrefs();
+        S.screen = "landing"; return render();
+      }
+      if(action === "admin-logout"){
+        S.prefs.role = null; S.prefs.adminAuthed = false; savePrefs();
+        S.screen = "landing"; return render();
+      }
+      if(action === "staff-tab"){ S.staffTab = el.getAttribute("data-tab"); return render(); }
+
+      if(action === "toggle-day"){
+        var dId = el.getAttribute("data-day");
+        S.openDays[dId] = !S.openDays[dId];
+        return render();
+      }
+      if(action === "add-day"){
+        var name = (S.newDayName||"").trim();
+        if(!name){ toast("Donne un nom au jour."); return; }
+        S.season.days.push({ id: nid("dy"), name: name, slots: [] });
+        S.newDayName = ""; saveSeason(); toast("Jour ajouté"); return render();
+      }
+      if(action === "delete-day"){
+        var dId2 = el.getAttribute("data-day");
+        S.season.days = S.season.days.filter(function(d){return d.id!==dId2;});
+        saveSeason(); toast("Jour supprimé"); return render();
+      }
+      if(action === "add-slot"){
+        var day = findDay(el.getAttribute("data-day"));
+        if(day){ day.slots.push({ id: nid("sl"), label: "Nouveau", time: "", groups: [] }); saveSeason(); }
+        return render();
+      }
+      if(action === "delete-slot"){
+        var day2 = findDay(el.getAttribute("data-day"));
+        if(day2){ day2.slots = day2.slots.filter(function(s){return s.id!==el.getAttribute("data-slot");}); saveSeason(); }
+        return render();
+      }
+      if(action === "add-group"){
+        var slot = findSlot(el.getAttribute("data-day"), el.getAttribute("data-slot"));
+        if(slot){ slot.groups.push({ id: nid("gr"), name: "Nouvel atelier", coachIds: [], playerIds: [], terrain: "" }); saveSeason(); }
+        return render();
+      }
+      if(action === "delete-group"){
+        var slot2 = findSlot(el.getAttribute("data-day"), el.getAttribute("data-slot"));
+        if(slot2){ slot2.groups = slot2.groups.filter(function(g){return g.id!==el.getAttribute("data-group");}); saveSeason(); }
+        return render();
+      }
+      if(action === "toggle-picker"){
+        var key = el.getAttribute("data-key");
+        S.openPlayerPickers[key] = !S.openPlayerPickers[key];
+        return render();
+      }
+      if(action === "toggle-coach-picker"){
+        var ckey = el.getAttribute("data-key");
+        S.openCoachPickers[ckey] = !S.openCoachPickers[ckey];
+        return render();
+      }
+      if(action === "toggle-coach-group"){
+        var gc = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        var cid = el.getAttribute("data-cid");
+        if(gc){
+          gc.coachIds = gc.coachIds || [];
+          var cidx = gc.coachIds.indexOf(cid);
+          if(cidx===-1) gc.coachIds.push(cid); else gc.coachIds.splice(cidx,1);
+          saveSeason();
+        }
+        return render();
+      }
+      if(action === "remove-coach-from-group"){
+        var gc2 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        var cid2 = el.getAttribute("data-cid");
+        if(gc2 && gc2.coachIds){ gc2.coachIds = gc2.coachIds.filter(function(x){return x!==cid2;}); saveSeason(); }
+        return render();
+      }
+      if(action === "toggle-player-group"){
+        var g = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        var pid = el.getAttribute("data-pid");
+        if(g){
+          g.playerIds = g.playerIds || [];
+          var idx = g.playerIds.indexOf(pid);
+          if(idx===-1) g.playerIds.push(pid); else g.playerIds.splice(idx,1);
+          syncPresence(g);
+          saveSeason();
+        }
+        return render();
+      }
+      if(action === "remove-player-from-group"){
+        var g2 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        var pid2 = el.getAttribute("data-pid");
+        if(g2 && g2.playerIds){ g2.playerIds = g2.playerIds.filter(function(x){return x!==pid2;}); syncPresence(g2); saveSeason(); }
+        return render();
+      }
+      if(action === "toggle-presence"){
+        var g5 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        var pid5 = el.getAttribute("data-pid");
+        if(g5){
+          g5.presentIds = g5.presentIds || [];
+          var pidx = g5.presentIds.indexOf(pid5);
+          if(pidx===-1) g5.presentIds.push(pid5); else g5.presentIds.splice(pidx,1);
+          saveSeason();
+        }
+        return render();
+      }
+      if(action === "reset-presence"){
+        var g6 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        if(g6){ g6.presentIds = []; saveSeason(); }
+        return render();
+      }
+      if(action === "add-player"){
+        var pname = (S.newPlayerName||"").trim();
+        if(!pname){ toast("Donne un nom au joueur."); return; }
+        S.season.roster.push({ id: nid("pl"), name: pname, statut: "", poste: "", sexe: "", categorie: "" });
+        S.newPlayerName = ""; saveSeason(); toast("Joueur ajouté"); return render();
+      }
+      if(action === "delete-player"){
+        var pid3 = el.getAttribute("data-id");
+        S.season.roster = S.season.roster.filter(function(p){return p.id!==pid3;});
+        S.season.days.forEach(function(d){ d.slots.forEach(function(s){ s.groups.forEach(function(g){
+          g.playerIds = (g.playerIds||[]).filter(function(x){return x!==pid3;});
+          syncPresence(g);
+        });});});
+        S.season.playerAbsences = S.season.playerAbsences.filter(function(a){return a.playerId!==pid3;});
+        saveSeason(); toast("Joueur retiré"); return render();
+      }
+      if(action === "add-coach"){
+        var cname = (S.newCoachName||"").trim();
+        if(!cname){ toast("Donne un nom au coach."); return; }
+        S.season.coaches.push({ id: nid("co"), name: cname });
+        S.newCoachName = ""; saveSeason(); toast("Coach ajouté"); return render();
+      }
+      if(action === "delete-coach"){
+        var cid = el.getAttribute("data-id");
+        S.season.coaches = S.season.coaches.filter(function(c){return c.id!==cid;});
+        S.season.days.forEach(function(d){ d.slots.forEach(function(s){ s.groups.forEach(function(g){
+          g.coachIds = (g.coachIds||[]).filter(function(x){return x!==cid;});
+        });});});
+        S.season.staffAbsences = S.season.staffAbsences.filter(function(a){return a.coachId!==cid;});
+        saveSeason(); toast("Coach retiré"); return render();
+      }
+      if(action === "save-admin-pin"){
+        var nap = (S.newAdminPin||"").trim();
+        if(!nap){ toast("Entre un nouveau code."); return; }
+        S.season.adminPin = nap; S.newAdminPin=""; saveSeason(); toast("Code admin mis à jour");
+        return render();
+      }
+      if(action === "save-staff-pin"){
+        var nsp = (S.newStaffPin||"").trim();
+        if(!nsp){ toast("Entre un nouveau code."); return; }
+        S.season.staffPin = nsp; S.newStaffPin=""; saveSeason(); toast("Code staff mis à jour");
+        return render();
+      }
+      if(action === "quick-jump-day"){
+        var jd = el.getAttribute("data-day");
+        Object.keys(S.openDays).forEach(function(k){ S.openDays[k] = false; });
+        S.openDays[jd] = true;
+        S.scrollToDay = jd;
+        return render();
+      }
+      if(action === "set-status-filter"){
+        var scope = el.getAttribute("data-scope");
+        var val = el.getAttribute("data-value");
+        if(scope === "roster") S.filters.rosterStatusFilter = val;
+        else if(scope === "player-select") S.filters.playerStatusFilter = val;
+        else if(scope === "picker") S.filters["ppstatus_"+el.getAttribute("data-key")] = val;
+        return render();
+      }
+      if(action === "set-poste-filter"){
+        var scope2 = el.getAttribute("data-scope");
+        var val2 = el.getAttribute("data-value");
+        if(scope2 === "roster") S.filters.rosterPosteFilter = val2;
+        else if(scope2 === "picker") S.filters["ppposte_"+el.getAttribute("data-key")] = val2;
+        return render();
+      }
+      if(action === "add-poste"){
+        var pn = (S.newPosteName||"").trim();
+        if(!pn){ toast("Donne un nom au poste."); return; }
+        if(S.season.postes.indexOf(pn)===-1) S.season.postes.push(pn);
+        S.newPosteName=""; saveSeason(); toast("Poste ajouté"); return render();
+      }
+      if(action === "delete-poste"){
+        var pidx = parseInt(el.getAttribute("data-index"),10);
+        S.season.postes.splice(pidx,1);
+        saveSeason(); toast("Poste retiré"); return render();
+      }
+      if(action === "add-categorie"){
+        var cn = (S.newCategorieName||"").trim();
+        if(!cn){ toast("Donne un nom à la catégorie."); return; }
+        if(S.season.categories.indexOf(cn)===-1) S.season.categories.push(cn);
+        S.newCategorieName=""; saveSeason(); toast("Catégorie ajoutée"); return render();
+      }
+      if(action === "delete-categorie"){
+        var cidx = parseInt(el.getAttribute("data-index"),10);
+        S.season.categories.splice(cidx,1);
+        saveSeason(); toast("Catégorie retirée"); return render();
+      }
+      if(action === "add-terrain"){
+        var tn = (S.newTerrainName||"").trim();
+        if(!tn){ toast("Donne un nom au terrain."); return; }
+        if(S.season.terrains.indexOf(tn)===-1) S.season.terrains.push(tn);
+        S.newTerrainName=""; saveSeason(); toast("Terrain ajouté"); return render();
+      }
+      if(action === "delete-terrain"){
+        var tidx = parseInt(el.getAttribute("data-index"),10);
+        S.season.terrains.splice(tidx,1);
+        saveSeason(); toast("Terrain retiré"); return render();
+      }
+      if(action === "save-season-dates"){
+        if(S.newSeasonStart) S.season.seasonStart = S.newSeasonStart;
+        if(S.newSeasonEnd) S.season.seasonEnd = S.newSeasonEnd;
+        saveSeason(); toast("Dates de saison enregistrées"); return render();
+      }
+      if(action === "export-absences-csv"){
+        var lines = ["Joueuse;Statut;Poste;T1;T2;T3;Total saison"];
+        S.season.roster.forEach(function(p){
+          var mine = S.season.playerAbsences.filter(function(a){return a.playerId===p.id;});
+          var t1 = mine.filter(function(a){return trimesterOf(a.date)===1;}).length;
+          var t2 = mine.filter(function(a){return trimesterOf(a.date)===2;}).length;
+          var t3 = mine.filter(function(a){return trimesterOf(a.date)===3;}).length;
+          lines.push([p.name, p.statut||"", p.poste||"", t1, t2, t3, t1+t2+t3].join(";"));
+        });
+        var csv = "\uFEFF" + lines.join("\n");
+        var blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = "absences_joueuses_fcg.csv";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+        toast("Export lancé");
+        return;
+      }
+      if(action === "add-player-absence"){
+        var apid = S.prefs.playerId;
+        var dId3 = S.newAbsenceDayId;
+        var dateV = (S.newAbsenceDate||"").trim();
+        if(!dId3 || !dateV){ toast("Choisis un jour et une date."); return; }
+        S.season.playerAbsences.push({ id: nid("pa"), playerId: apid, dayId: dId3, date: dateV, note: (S.newAbsenceNote||"").trim(), createdAt: todayISO() });
+        S.newAbsenceDayId=""; S.newAbsenceDate=""; S.newAbsenceNote="";
+        saveSeason(); toast("Absence signalée"); return render();
+      }
+      if(action === "delete-player-absence"){
+        var paId = el.getAttribute("data-id");
+        S.season.playerAbsences = S.season.playerAbsences.filter(function(a){return a.id!==paId;});
+        saveSeason(); toast("Absence annulée"); return render();
+      }
+      if(action === "select-all-players"){
+        var g3 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        if(g3){
+          var visible = filteredRoster(el.getAttribute("data-q"), el.getAttribute("data-status"), el.getAttribute("data-poste"), el.getAttribute("data-sexe"), el.getAttribute("data-categorie"));
+          g3.playerIds = g3.playerIds || [];
+          var allIn = visible.every(function(p){ return g3.playerIds.indexOf(p.id) !== -1; });
+          if(allIn){
+            var visIds = visible.map(function(p){return p.id;});
+            g3.playerIds = g3.playerIds.filter(function(id){ return visIds.indexOf(id) === -1; });
+          } else {
+            visible.forEach(function(p){ if(g3.playerIds.indexOf(p.id)===-1) g3.playerIds.push(p.id); });
+          }
+          syncPresence(g3);
+          saveSeason();
+        }
+        return render();
+      }
+    });
+
+    app.addEventListener("input", function(e){
+      var el = e.target;
+      var field = el.getAttribute("data-field");
+      if(!field) return;
+
+      if(field === "playerQuery"){ S.filters.playerQuery = el.value; renderKeepFocus(); return; }
+      if(field === "pinValue"){ S.pinValue = el.value; return; }
+      if(field === "rosterQuery"){ S.filters.rosterQuery = el.value; renderKeepFocus(); return; }
+      if(field === "newDayName"){ S.newDayName = el.value; return; }
+      if(field === "newPlayerName"){ S.newPlayerName = el.value; return; }
+      if(field === "newCoachName"){ S.newCoachName = el.value; return; }
+      if(field === "newPin"){ S.newPin = el.value; return; }
+      if(field === "newAdminPin"){ S.newAdminPin = el.value; return; }
+      if(field === "newStaffPin"){ S.newStaffPin = el.value; return; }
+      if(field === "newSeasonStart"){ S.newSeasonStart = el.value; return; }
+      if(field === "newSeasonEnd"){ S.newSeasonEnd = el.value; return; }
+      if(field === "newPosteName"){ S.newPosteName = el.value; return; }
+      if(field === "newCategorieName"){ S.newCategorieName = el.value; return; }
+      if(field === "newTerrainName"){ S.newTerrainName = el.value; return; }
+      if(field === "newStaffAbsenceStart"){ S.newStaffAbsenceStart = el.value; return; }
+      if(field === "newStaffAbsenceEnd"){ S.newStaffAbsenceEnd = el.value; return; }
+      if(field === "newStaffAbsenceNote"){ S.newStaffAbsenceNote = el.value; return; }
+      if(field === "newAbsenceDate"){ S.newAbsenceDate = el.value; return; }
+      if(field === "newAbsenceNote"){ S.newAbsenceNote = el.value; return; }
+      if(field.indexOf("pp_") === 0){ S.filters[field] = el.value; renderKeepFocus(); return; }
+
+      if(field === "slot-label"){
+        var sl = findSlot(el.getAttribute("data-day"), el.getAttribute("data-slot"));
+        if(sl){ sl.label = el.value; saveSeason(); }
+        return;
+      }
+      if(field === "slot-time"){
+        var sl2 = findSlot(el.getAttribute("data-day"), el.getAttribute("data-slot"));
+        if(sl2){ sl2.time = el.value; saveSeason(); }
+        return;
+      }
+      if(field === "group-name"){
+        var g = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        if(g){ g.name = el.value; saveSeason(); }
+        return;
+      }
+      if(field === "player-name"){
+        var p = findPlayer(el.getAttribute("data-id"));
+        if(p){ p.name = el.value; saveSeason(); }
+        return;
+      }
+      if(field === "coach-name"){
+        var c = findCoach(el.getAttribute("data-id"));
+        if(c){ c.name = el.value; saveSeason(); }
+        return;
+      }
+    });
+
+    app.addEventListener("change", function(e){
+      var el = e.target;
+      var field = el.getAttribute("data-field");
+      var tri = el.getAttribute("data-tri");
+      if(tri){
+        var scope = el.getAttribute("data-scope");
+        var key = el.getAttribute("data-key");
+        var val = el.value;
+        if(scope === "roster"){
+          if(tri==="statut") S.filters.rosterStatusFilter = val;
+          else if(tri==="sexe") S.filters.rosterSexeFilter = val;
+          else if(tri==="categorie") S.filters.rosterCategorieFilter = val;
+        } else if(scope === "picker"){
+          if(tri==="statut") S.filters["ppstatus_"+key] = val;
+          else if(tri==="sexe") S.filters["ppsexe_"+key] = val;
+          else if(tri==="categorie") S.filters["ppcategorie_"+key] = val;
+        }
+        return render();
+      }
+      if(field === "group-terrain"){
+        var gt = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
+        if(gt){ gt.terrain = el.value; saveSeason(); render(); }
+      }
+      if(field === "player-statut"){
+        var p = findPlayer(el.getAttribute("data-id"));
+        if(p){ p.statut = el.value; saveSeason(); }
+      }
+      if(field === "player-poste"){
+        var p2 = findPlayer(el.getAttribute("data-id"));
+        if(p2){ p2.poste = el.value; saveSeason(); }
+      }
+      if(field === "player-categorie"){
+        var p4 = findPlayer(el.getAttribute("data-id"));
+        if(p4){ p4.categorie = el.value; saveSeason(); }
+      }
+      if(field === "player-sexe"){
+        var p3 = findPlayer(el.getAttribute("data-id"));
+        if(p3){ p3.sexe = el.value; saveSeason(); }
+      }
+      if(field === "newAbsenceDayId"){
+        S.newAbsenceDayId = el.value;
+        var day = findDay(el.value);
+        if(day && !S.newAbsenceDate) S.newAbsenceDate = nextOccurrence(day.name);
+        render();
+      }
+    });
+
+    function renderKeepFocus(){
+      var active = document.activeElement;
+      var field = active ? active.getAttribute("data-field") : null;
+      var selStart = active ? active.selectionStart : null;
+      render();
+      if(field){
+        var again = app.querySelector('[data-field="'+field+'"]');
+        if(again){ again.focus(); if(selStart!=null){ try{ again.setSelectionRange(selStart, selStart); }catch(e){} } }
+      }
+    }
+
+    loadAll();
+  });
+})();
+</script>
+</body>
+</html>
+<script async src="/.netlify/scripts/hud?variant=public" data-nf-variant="public" data-netlify-site-id="b9df51c4-6f6c-4b6e-b7c6-5bf245eb8c19" data-app-host="app.netlify.com"></script>
