@@ -840,17 +840,24 @@
 
   /* ---------------- PLAYER SELECT ---------------- */
   function renderPlayerSelect(){
+    var q = (S.filters.playerQuery||"").toLowerCase().trim();
     var list = S.season.roster.slice().sort(function(a,b){ return a.name.localeCompare(b.name,'fr'); });
+    if(q) list = list.filter(function(p){ return p.name.toLowerCase().indexOf(q)!==-1; });
     var selected = S.playerSelectValue || "";
-    var options = '<option value="">Choisis ton nom…</option>' + list.map(function(p){
+    if(selected && !list.some(function(p){return p.id===selected;})) selected = "";
+    var options = '<option value="">'+(list.length?"Choisis ton nom…":"Aucun résultat")+'</option>' + list.map(function(p){
       return '<option value="'+p.id+'" '+(selected===p.id?"selected":"")+'>'+esc(p.name)+'</option>';
     }).join("");
     return '' +
     '<div class="topbar">' +
       '<button class="tb-back" data-action="go-landing">'+ICONS.back+'</button>' +
-      '<div class="tb-text"><div class="tb-title">Qui es-tu ?</div><div class="tb-sub">Choisis ton nom dans la liste</div></div>' +
+      '<div class="tb-text"><div class="tb-title">Qui es-tu ?</div><div class="tb-sub">Cherche puis choisis ton nom</div></div>' +
     '</div>' +
     '<div class="content">' +
+      '<div class="search-wrap">' +
+        '<span class="search-icon">'+ICONS.search+'</span>' +
+        '<input id="search-input-el" class="search-input" placeholder="Tape les premières lettres…" value="'+esc(S.filters.playerQuery||"")+'" data-field="playerQuery">' +
+      '</div>' +
       '<div class="form-row">' +
         '<select id="player-dropdown-el" class="select-dropdown" data-field="playerSelectValue">'+options+'</select>' +
       '</div>' +
@@ -964,44 +971,18 @@
   function renderPlayerView(){
     var player = findPlayer(S.prefs.playerId);
     if(!player){ S.screen = "player-select"; return renderPlayerSelect(); }
-    var showAll = S.staffTab === "team";
 
     var body = "";
-    if(showAll){
-      S.season.days.forEach(function(day){
-        var anyFound = false;
-        var slotsHtml = day.slots.map(function(slot){
-          if(!slot.groups.length) return "";
-          var groupsHtml = slot.groups.map(function(g){
-            var coachNames2 = coachNamesForGroup(g);
-            var names = (g.playerIds||[]).map(function(pid){ var pl=findPlayer(pid); return pl?pl.name:""; }).filter(Boolean);
-            return '<div class="group-card">' +
-              '<div class="gc-name">'+esc(g.name||"Atelier")+'</div>' +
-              (coachNames2.length ? '<div class="gc-coach">'+esc(coachNames2.join(", "))+'</div>' : '') +
-              (g.terrain ? '<div class="gc-terrain">'+esc(g.terrain)+'</div>' : '') +
-              '<div class="gc-players">'+(names.length?esc(names.join(", ")):'<span class="muted">Aucun joueur assigné</span>')+'</div>' +
-            '</div>';
-          }).join("");
-          anyFound = true;
-          return '<div class="slot-card"><div class="slot-time">'+esc(slot.label)+' · '+esc(slot.time)+'</div>'+groupsHtml+'</div>';
-        }).join("");
-        body += '<div class="day-block">' +
-          '<div class="day-head">'+esc(day.name)+(anyFound?'':' <span class="dh-count">journée libre</span>')+'</div>' +
-          (anyFound ? '<div class="timeline">'+slotsHtml+'</div>' : '') +
-        '</div>';
-      });
-    } else {
-      S.season.days.forEach(function(day){
-        var agendaHtml = renderPlayerDayAgenda(day, player);
-        body += '<div class="day-block">' +
-          '<div class="day-head">'+esc(day.name)+(agendaHtml?'':' <span class="dh-count">journée libre</span>')+'</div>' +
-          (agendaHtml || '') +
-        '</div>';
-      });
-    }
+    S.season.days.forEach(function(day){
+      var agendaHtml = renderPlayerDayAgenda(day, player);
+      body += '<div class="day-block">' +
+        '<div class="day-head">'+esc(day.name)+(agendaHtml?'':' <span class="dh-count">journée libre</span>')+'</div>' +
+        (agendaHtml || '') +
+      '</div>';
+    });
 
     var absencesHtml = "";
-    if(!showAll){
+    {
       var eligibleDays = S.season.days.filter(function(day){
         return day.slots.some(function(slot){ return slotHasGroupWithPlayer(slot, player.id); });
       });
@@ -1040,16 +1021,12 @@
     return '' +
     '<div class="topbar">' +
       '<div class="tb-text">' +
-        '<div class="tb-title">'+(showAll?"Toute l'équipe":esc(player.name))+'</div>' +
-        '<div class="tb-sub">'+(showAll?"Planning complet de la semaine":"Ton planning de la semaine")+'</div>' +
+        '<div class="tb-title">'+esc(player.name)+'</div>' +
+        '<div class="tb-sub">Ton planning de la semaine</div>' +
       '</div>' +
       '<button class="tb-action" data-action="change-player">Changer</button>' +
     '</div>' +
-    '<div class="content">'+body+absencesHtml+'</div>' +
-    '<div class="bottom-nav">' +
-      '<button class="nav-btn '+(S.staffTab!=="team"?"active":"")+'" data-action="pv-tab" data-tab="mine">'+ICONS.calendar+'<span>Mon planning</span></button>' +
-      '<button class="nav-btn '+(S.staffTab==="team"?"active":"")+'" data-action="pv-tab" data-tab="team">'+ICONS.users+'<span>Toute l\'équipe</span></button>' +
-    '</div>';
+    '<div class="content">'+body+absencesHtml+'</div>';
   }
 
   /* ---------------- PIN ENTRY (générique) ---------------- */
@@ -1586,7 +1563,6 @@
         S.prefs.role = null; S.prefs.playerId = null; savePrefs();
         S.screen = "landing"; return render();
       }
-      if(action === "pv-tab"){ S.staffTab = el.getAttribute("data-tab"); return render(); }
 
       if(action === "pin-submit"){
         if(S.pinTarget === "admin"){
