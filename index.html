@@ -224,15 +224,17 @@
   .group-card .gc-terrain{font-size:11px;color:var(--ink-soft);margin:-3px 0 6px;}
   .group-card .gc-players{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
   .presence-block{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);}
-  .presence-head{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;}
+  .presence-head{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:var(--ink-soft);margin-bottom:8px;flex-wrap:wrap;gap:6px;}
   .presence-head strong{color:var(--ink);}
+  .presence-head-actions{display:flex;align-items:center;gap:12px;}
   .presence-reset{background:none;border:none;color:var(--amber-dark);font-size:11.5px;font-weight:600;padding:0;}
+  .presence-toggle-list{background:none;border:none;color:var(--pitch-lighter);font-size:11.5px;font-weight:600;padding:0;}
   .presence-chips{display:flex;flex-wrap:wrap;gap:7px;}
   .presence-chip{display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--paper);border-radius:20px;padding:6px 12px 6px 6px;font-size:12.5px;color:var(--ink);}
   .presence-chip .pc-dot{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;}
   .presence-chip .pc-dot svg{width:11px;height:11px;}
-  .presence-chip.present{border-color:#2E7D46;background:#EAF6ED;color:#1F5C33;}
-  .presence-chip.present .pc-dot{background:#2E7D46;border-color:#2E7D46;}
+  .presence-chip.absent{border-color:var(--danger);background:#FDEBEA;color:var(--danger);}
+  .presence-chip.absent .pc-dot{background:var(--danger);border-color:var(--danger);}
 
   /* ---------- Day/week toggle ---------- */
   .view-toggle{display:flex;gap:8px;margin-bottom:14px;}
@@ -430,7 +432,7 @@
   function nid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
   var S = { season: null, prefs: null, screen: "loading", staffTab: "planning",
-            openDays: {}, openPlayerPickers: {}, openCoachPickers: {}, filters: {}, pinValue: "", pinError: "",
+            openDays: {}, openPlayerPickers: {}, openCoachPickers: {}, openAbsenceLists: {}, filters: {}, pinValue: "", pinError: "",
             pinTarget: "admin", newDayName: "", scrollToDay: null };
 
   function defaultSeason(){
@@ -571,6 +573,10 @@
         if(g.coachIds===undefined){
           g.coachIds = g.coachId ? [g.coachId] : [];
           delete g.coachId;
+        }
+        if(g.absentIds===undefined){
+          g.absentIds = [];
+          delete g.presentIds;
         }
       });});});
     }catch(e){
@@ -738,27 +744,33 @@
 
   function syncPresence(g){
     if(!g) return;
-    g.presentIds = g.presentIds || [];
+    g.absentIds = g.absentIds || [];
     var ids = g.playerIds || [];
-    g.presentIds = g.presentIds.filter(function(pid){ return ids.indexOf(pid) !== -1; });
+    g.absentIds = g.absentIds.filter(function(pid){ return ids.indexOf(pid) !== -1; });
   }
 
   function renderPresenceBlock(dayId, slotId, g){
     var assigned = (g.playerIds||[]).map(function(pid){ return findPlayer(pid); }).filter(Boolean);
     if(!assigned.length) return "";
-    var presentIds = g.presentIds || [];
-    var presentCount = assigned.filter(function(p){ return presentIds.indexOf(p.id)!==-1; }).length;
+    var absentIds = g.absentIds || [];
+    var absentCount = assigned.filter(function(p){ return absentIds.indexOf(p.id)!==-1; }).length;
+    var key = dayId+"|"+slotId+"|"+g.id;
+    var listOpen = !!S.openAbsenceLists[key];
     var chips = assigned.map(function(p){
-      var checked = presentIds.indexOf(p.id) !== -1;
-      return '<button class="presence-chip '+(checked?"present":"")+'" data-action="toggle-presence" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-pid="'+p.id+'">' +
-        '<span class="pc-dot">'+(checked?ICONS.check:'')+'</span>'+esc(p.name) +
+      var checked = absentIds.indexOf(p.id) !== -1;
+      return '<button class="presence-chip '+(checked?"absent":"")+'" data-action="toggle-presence" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" data-pid="'+p.id+'">' +
+        '<span class="pc-dot">'+(checked?ICONS.x:'')+'</span>'+esc(p.name) +
       '</button>';
     }).join("");
     return '<div class="presence-block">' +
-      '<div class="presence-head"><span>Présences <strong>'+presentCount+'/'+assigned.length+'</strong></span>' +
-        (presentCount>0 ? '<button class="presence-reset" data-action="reset-presence" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'">Réinitialiser</button>' : '') +
+      '<div class="presence-head">' +
+        '<span>Absences <strong>'+absentCount+'/'+assigned.length+'</strong></span>' +
+        '<div class="presence-head-actions">' +
+          (absentCount>0 ? '<button class="presence-reset" data-action="reset-presence" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'">Réinitialiser</button>' : '') +
+          '<button class="presence-toggle-list" data-action="toggle-absence-list" data-key="'+key+'">'+(listOpen?"Masquer":"Afficher")+' la liste</button>' +
+        '</div>' +
       '</div>' +
-      '<div class="presence-chips">'+chips+'</div>' +
+      (listOpen ? '<div class="presence-chips">'+chips+'</div>' : '') +
     '</div>';
   }
 
@@ -1348,7 +1360,6 @@
       (chips ? '<div class="chip-list">'+chips+'</div>' : '') +
       '<button class="atelier-players-btn" data-action="toggle-picker" data-key="'+pickerKey+'">'+(pickerOpen?"Fermer la liste":"+ Gérer les joueurs ("+names.length+")")+'</button>' +
       pickerHtml +
-      renderPresenceBlock(dayId, slotId, g) +
     '</div>';
   }
 
@@ -1739,16 +1750,21 @@
         var g5 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
         var pid5 = el.getAttribute("data-pid");
         if(g5){
-          g5.presentIds = g5.presentIds || [];
-          var pidx = g5.presentIds.indexOf(pid5);
-          if(pidx===-1) g5.presentIds.push(pid5); else g5.presentIds.splice(pidx,1);
+          g5.absentIds = g5.absentIds || [];
+          var pidx = g5.absentIds.indexOf(pid5);
+          if(pidx===-1) g5.absentIds.push(pid5); else g5.absentIds.splice(pidx,1);
           saveSeason();
         }
         return render();
       }
       if(action === "reset-presence"){
         var g6 = findGroup(el.getAttribute("data-day"), el.getAttribute("data-slot"), el.getAttribute("data-group"));
-        if(g6){ g6.presentIds = []; saveSeason(); }
+        if(g6){ g6.absentIds = []; saveSeason(); }
+        return render();
+      }
+      if(action === "toggle-absence-list"){
+        var alKey = el.getAttribute("data-key");
+        S.openAbsenceLists[alKey] = !S.openAbsenceLists[alKey];
         return render();
       }
       if(action === "add-player"){
