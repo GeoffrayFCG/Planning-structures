@@ -329,7 +329,10 @@
   .atelier-row-flex{display:flex;flex-wrap:wrap;gap:10px;}
   .atelier-row-flex .atelier-card{flex:1 1 250px;min-width:230px;margin-top:0;}
   .atelier-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 11px;margin-top:8px;}
-  .atelier-row{display:flex;gap:7px;margin-bottom:7px;}
+  .atelier-row{display:flex;gap:7px;margin-bottom:7px;align-items:center;}
+  .reorder-btns{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+  .reorder-btns .icon-btn{width:26px;height:18px;border-radius:5px;}
+  .reorder-btns .icon-btn:disabled{opacity:0.25;}
   .atelier-players-btn{
     width:100%;text-align:left;font-size:12.5px;color:var(--ink-soft);background:var(--chalk);
     border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin-top:2px;
@@ -793,7 +796,9 @@
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0112 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10z"/><path d="M10 18.5a2 2 0 004 0"/></svg>',
     key: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 4l3 3M13 7l2.5 2.5"/></svg>',
-    calendarX: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9.5 14.5l5 5M14.5 14.5l-5 5"/></svg>'
+    calendarX: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M9.5 14.5l5 5M14.5 14.5l-5 5"/></svg>',
+    chevronUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+    chevronDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
   };
 
   /* ---------------- RENDER ROOT ---------------- */
@@ -1233,8 +1238,8 @@
     var html = S.season.days.map(function(day){
       var open = !!S.openDays[day.id];
       var slotsHtml = day.slots.map(function(slot){
-        var groupsHtml = slot.groups.map(function(g){
-          return renderAtelierEdit(day.id, slot.id, g);
+        var groupsHtml = slot.groups.map(function(g, gIdx){
+          return renderAtelierEdit(day.id, slot.id, g, gIdx, slot.groups.length);
         }).join("");
         return '<div class="slot-edit">' +
           '<div class="slot-edit-head">' +
@@ -1269,7 +1274,8 @@
       '</div>';
   }
 
-  function renderAtelierEdit(dayId, slotId, g){
+  function renderAtelierEdit(dayId, slotId, g, gIdx, gTotal){
+    gIdx = gIdx||0; gTotal = gTotal||1;
     var pickerKey = dayId+"|"+slotId+"|"+g.id;
     var pickerOpen = !!S.openPlayerPickers[pickerKey];
     var coachPickerOpen = !!S.openCoachPickers[pickerKey];
@@ -1322,8 +1328,16 @@
       return '<option value="'+esc(t)+'" '+(g.terrain===t?"selected":"")+'>'+esc(t)+'</option>';
     }).join("");
 
+    var reorderBtns = gTotal > 1 ? (
+      '<div class="reorder-btns">' +
+        '<button class="icon-btn" '+(gIdx===0?"disabled":"")+' data-action="move-group-up" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" title="Monter">'+ICONS.chevronUp+'</button>' +
+        '<button class="icon-btn" '+(gIdx===gTotal-1?"disabled":"")+' data-action="move-group-down" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" title="Descendre">'+ICONS.chevronDown+'</button>' +
+      '</div>'
+    ) : "";
+
     return '<div class="atelier-card">' +
       '<div class="atelier-row">' +
+        reorderBtns +
         '<input class="mini-input" data-field="group-name" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'" value="'+esc(g.name)+'" placeholder="Nom de l\'atelier">' +
         '<button class="icon-btn danger" data-action="delete-group" data-day="'+dayId+'" data-slot="'+slotId+'" data-group="'+g.id+'">'+ICONS.trash+'</button>' +
       '</div>' +
@@ -1659,6 +1673,21 @@
       if(action === "delete-group"){
         var slot2 = findSlot(el.getAttribute("data-day"), el.getAttribute("data-slot"));
         if(slot2){ slot2.groups = slot2.groups.filter(function(g){return g.id!==el.getAttribute("data-group");}); saveSeason(); }
+        return render();
+      }
+      if(action === "move-group-up" || action === "move-group-down"){
+        var slotM = findSlot(el.getAttribute("data-day"), el.getAttribute("data-slot"));
+        if(slotM){
+          var gid = el.getAttribute("data-group");
+          var idx = slotM.groups.findIndex(function(x){return x.id===gid;});
+          var swapWith = action === "move-group-up" ? idx-1 : idx+1;
+          if(idx!==-1 && swapWith>=0 && swapWith<slotM.groups.length){
+            var tmp = slotM.groups[idx];
+            slotM.groups[idx] = slotM.groups[swapWith];
+            slotM.groups[swapWith] = tmp;
+            saveSeason();
+          }
+        }
         return render();
       }
       if(action === "toggle-picker"){
