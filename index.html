@@ -400,6 +400,24 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
 
+  .notice-banner{
+    position:sticky;top:0;z-index:50;display:flex;gap:10px;align-items:flex-start;
+    background:#FDEBEA;color:var(--danger);border-bottom:1.5px solid #E9C9C3;
+    padding:calc(12px + var(--safe-top)) 16px 12px;font-size:13.5px;line-height:1.45;font-weight:500;
+  }
+  .notice-banner.info{background:#EAF1FB;color:var(--pitch);border-color:#C9D7EE;}
+  .notice-banner .nb-text{flex:1;}
+  .notice-banner button{background:var(--paper);border:1px solid currentColor;color:inherit;border-radius:8px;padding:5px 11px;font-size:12.5px;font-weight:600;flex-shrink:0;}
+  .error-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 26px;background:var(--pitch);color:var(--chalk);}
+  .error-screen h2{font-size:26px;margin:18px 0 10px;}
+  .error-screen p{color:#C9D3E8;font-size:14.5px;line-height:1.55;max-width:36ch;margin:0 0 6px;}
+  .error-screen .primary-btn{max-width:280px;background:var(--paper);color:var(--pitch);}
+  .backup-box{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:8px;}
+  .backup-row{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:7px;}
+  .backup-row .br-main{flex:1;min-width:0;}
+  .backup-row .br-date{font-weight:600;font-size:13.5px;}
+  .backup-row .br-meta{font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
+  .backup-row button{background:var(--pitch);color:var(--chalk);border:none;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600;flex-shrink:0;}
   .loading-screen{
     min-height:100vh;display:flex;align-items:center;justify-content:center;
     background:var(--pitch);color:var(--chalk);font-family:'Barlow Condensed';font-size:18px;
@@ -429,7 +447,15 @@
   };
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
-  var seasonDocRef = db.collection("fcg-planning").doc("season-2026-27");
+  // Données protégées : nouveau document avec numéro de version (rev).
+  // L'ancien document "season-2026-27" n'est plus utilisé : une ancienne version
+  // de l'appli restée ouverte sur un appareil ne peut donc plus rien écraser.
+  var seasonDocRef = db.collection("fcg-planning").doc("season-2026-27-v2");
+  var legacyDocRef = db.collection("fcg-planning").doc("season-2026-27");
+  var BACKUP_SLOTS = 60;                    // nombre de copies conservées
+  var BACKUP_INTERVAL_MS = 20*60*1000;      // une copie au plus toutes les 20 min d'activité
+  var PERIODIC_BACKUP_MS = 6*60*60*1000;    // et au moins une toutes les 6 h à l'ouverture
+  function backupRef(i){ return db.collection("fcg-planning").doc("backup-"+String(i).padStart(2,"0")); }
 
   var PREFS_KEY = "fcg-planning-structures-device-prefs";
 
@@ -549,27 +575,19 @@
 
   function defaultPrefs(){ return { role: null, playerId: null, coachId: null, staffAuthed: false, adminAuthed: false, rehabAuthed: false }; }
 
-  async function loadAll(){
-    try{
-      var snap = await seasonDocRef.get();
-      if(snap.exists && snap.data() && snap.data().payload){
-        S.season = JSON.parse(snap.data().payload);
-      } else {
-        S.season = defaultSeason();
-        await seasonDocRef.set({ payload: JSON.stringify(S.season) });
-      }
-      if(!S.season.adminPin) S.season.adminPin = S.season.pin || "2027";
-      if(!S.season.staffPin) S.season.staffPin = "1892";
-      if(!S.season.rehabPin) S.season.rehabPin = "2626";
-      if(!S.season.postes) S.season.postes = ["Pilier","Talonneur","2ème ligne","3ème ligne","Demi de mêlée","Demi d'ouverture","Centre","Ailier","Arrière"];
-      if(!S.season.categories) S.season.categories = ["M16F","M16G","M18F","M18G"];
-      if(!S.season.terrains) S.season.terrains = ["Terrain 5 Bachelard","Terrain 6 Bachelard","Annexe Lesdiguière","Terrain d'honneur","Salle Liénard","Halle"];
-      if(!S.season.seasonStart) S.season.seasonStart = "2026-09-01";
-      if(!S.season.seasonEnd) S.season.seasonEnd = "2027-06-30";
-      if(!S.season.playerAbsences) S.season.playerAbsences = [];
-      if(!S.season.staffAbsences) S.season.staffAbsences = [];
-      if(!S.season.rehabSessions) S.season.rehabSessions = [];
-      S.season.roster.forEach(function(p){
+  function normalizeSeason(season){
+      if(!season.adminPin) season.adminPin = season.pin || "2027";
+      if(!season.staffPin) season.staffPin = "1892";
+      if(!season.rehabPin) season.rehabPin = "2626";
+      if(!season.postes) season.postes = ["Pilier","Talonneur","2ème ligne","3ème ligne","Demi de mêlée","Demi d'ouverture","Centre","Ailier","Arrière"];
+      if(!season.categories) season.categories = ["M16F","M16G","M18F","M18G"];
+      if(!season.terrains) season.terrains = ["Terrain 5 Bachelard","Terrain 6 Bachelard","Annexe Lesdiguière","Terrain d'honneur","Salle Liénard","Halle"];
+      if(!season.seasonStart) season.seasonStart = "2026-09-01";
+      if(!season.seasonEnd) season.seasonEnd = "2027-06-30";
+      if(!season.playerAbsences) season.playerAbsences = [];
+      if(!season.staffAbsences) season.staffAbsences = [];
+      if(!season.rehabSessions) season.rehabSessions = [];
+      season.roster.forEach(function(p){
         if(p.poste===undefined) p.poste = "";
         if(p.sexe===undefined) p.sexe = "";
         if(p.categorie===undefined){ p.categorie = p.anneeNaissance || ""; delete p.anneeNaissance; }
@@ -578,7 +596,7 @@
         if(p.blessure===undefined) p.blessure = "";
         if(p.dateRetour===undefined) p.dateRetour = "";
       });
-      S.season.days.forEach(function(d){ d.slots.forEach(function(s){ s.groups.forEach(function(g){
+      season.days.forEach(function(d){ d.slots.forEach(function(s){ s.groups.forEach(function(g){
         if(g.terrain===undefined) g.terrain = "";
         if(g.coachIds===undefined){
           g.coachIds = g.coachId ? [g.coachId] : [];
@@ -589,11 +607,10 @@
           delete g.presentIds;
         }
       });});});
-    }catch(e){
-      console.error(e);
-      S.season = defaultSeason();
-      toast("Connexion au serveur impossible — données de démarrage affichées.");
-    }
+    return season;
+  }
+
+  function loadPrefs(){
     try{
       var raw = localStorage.getItem(PREFS_KEY);
       S.prefs = raw ? JSON.parse(raw) : defaultPrefs();
@@ -602,6 +619,9 @@
     }catch(e){
       S.prefs = defaultPrefs();
     }
+  }
+
+  function routeAfterLoad(){
     if(S.prefs.role === "player" && S.prefs.playerId && findPlayer(S.prefs.playerId)){
       S.screen = "player-view";
     } else if(S.prefs.role === "staff" && S.prefs.staffAuthed){
@@ -614,17 +634,326 @@
     } else {
       S.screen = "landing";
     }
-    render();
   }
 
-  var saveTimer = null;
-  function saveSeason(){
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async function(){
-      try{ await seasonDocRef.set({ payload: JSON.stringify(S.season) }); }
-      catch(e){ toast("Erreur de sauvegarde, vérifie ta connexion internet."); }
-    }, 250);
+  function applyServerDoc(d){
+    S.season = normalizeSeason(JSON.parse(d.payload));
+    S.rev = d.rev || 0;
+    S.serverMeta = { updatedAt: d.updatedAt || 0, updatedBy: d.updatedBy || "" };
   }
+
+  function isValidSeason(x){
+    return !!(x && Array.isArray(x.roster) && Array.isArray(x.days) && Array.isArray(x.coaches));
+  }
+
+  function summarizePayload(payload){
+    try{
+      var x = typeof payload === "string" ? JSON.parse(payload) : payload;
+      var slots=0, groups=0, assign=0;
+      (x.days||[]).forEach(function(d){ (d.slots||[]).forEach(function(sl){ slots++; (sl.groups||[]).forEach(function(g){ groups++; assign += (g.playerIds||[]).length; }); }); });
+      return { players:(x.roster||[]).length, coaches:(x.coaches||[]).length, days:(x.days||[]).length,
+               slots:slots, groups:groups, assign:assign,
+               absences:(x.playerAbsences||[]).length + (x.staffAbsences||[]).length,
+               rehab:(x.rehabSessions||[]).length };
+    }catch(e){ return null; }
+  }
+  function summaryScore(sm){ return sm ? (sm.players + sm.coaches + sm.days + sm.slots + sm.groups + sm.assign + sm.absences + sm.rehab) : 0; }
+  function summaryText(sm){
+    if(!sm) return "";
+    return sm.players+" joueurs · "+sm.groups+" ateliers · "+sm.assign+" affectations · "+sm.absences+" absences";
+  }
+  // Vrai si la nouvelle version contient nettement moins d'informations que l'ancienne
+  function bigLoss(oldPayload, newPayload){
+    var a = summaryScore(summarizePayload(oldPayload)), b = summaryScore(summarizePayload(newPayload));
+    return a > 0 && (a - b) >= 3 && b < a * 0.9;
+  }
+
+  function currentUserLabel(){
+    var p = S.prefs || {};
+    if(p.role === "admin") return "Administrateur";
+    if(p.role === "staff"){ var c = p.coachId && findCoach(p.coachId); return "Staff" + (c ? " : " + c.name : ""); }
+    if(p.role === "player"){ var pl = p.playerId && findPlayer(p.playerId); return "Joueur" + (pl ? " : " + pl.name : ""); }
+    if(p.role === "rehab") return "Réathlétisation";
+    return "Inconnu";
+  }
+
+  function backupDocFrom(d, now, reason){
+    return { type: "backup", at: now, payload: d.payload, rev: d.rev || 0,
+             savedAt: d.updatedAt || 0, savedBy: d.updatedBy || "", reason: reason,
+             summary: summarizePayload(d.payload) };
+  }
+
+  function showNotice(msg, kind){ S.notice = { msg: msg, kind: kind || "error" }; }
+
+  function fmtDateTime(ms){
+    if(!ms) return "date inconnue";
+    var d = new Date(ms);
+    return d.toLocaleDateString("fr-FR", {weekday:"short", day:"2-digit", month:"2-digit", year:"numeric"}) + " à " +
+           d.toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"});
+  }
+
+  // Ré-affiche l'écran en conservant le champ en cours de saisie
+  function rerenderKeepFocus(){
+    var active = document.activeElement;
+    var sel = null, caret = null;
+    if(active && active.getAttribute && active.getAttribute("data-field")){
+      var attrs = ["data-field","data-id","data-day","data-slot","data-group","data-session"];
+      sel = attrs.filter(function(a){ return active.hasAttribute(a); })
+                 .map(function(a){ return '['+a+'="'+String(active.getAttribute(a)).replace(/"/g,'\\"')+'"]'; }).join("");
+      try{ caret = active.selectionStart; }catch(e){ caret = null; }
+    }
+    render();
+    if(sel){
+      var again = document.querySelector(sel);
+      if(again){ again.focus(); if(caret!=null){ try{ again.setSelectionRange(caret, caret); }catch(e){} } }
+    }
+  }
+
+  async function loadAll(){
+    loadPrefs();
+    try{
+      var snap = await seasonDocRef.get({ source: "server" });
+      if(snap.exists && snap.data() && snap.data().payload){
+        applyServerDoc(snap.data());
+      } else {
+        // Premier lancement de la version protégée : on reprend les données de l'ancien
+        // document (ou les données de départ s'il n'existe pas), de façon atomique.
+        var created = await db.runTransaction(async function(tx){
+          var cur = await tx.get(seasonDocRef);
+          if(cur.exists && cur.data() && cur.data().payload) return cur.data();
+          var legacy = await tx.get(legacyDocRef);
+          var payload = (legacy.exists && legacy.data() && legacy.data().payload)
+            ? legacy.data().payload : JSON.stringify(defaultSeason());
+          var docData = { payload: payload, rev: 1, updatedAt: Date.now(), updatedBy: "Migration vers la version protégée",
+                          backupSlot: 0, lastBackupAt: 0 };
+          tx.set(seasonDocRef, docData);
+          return docData;
+        });
+        applyServerDoc(created);
+      }
+      S.loadOk = true;
+    }catch(e){
+      console.error(e);
+      // IMPORTANT : on n'affiche PAS de données de départ et on n'enregistre RIEN.
+      S.loadOk = false;
+      S.screen = "load-error";
+      render();
+      return;
+    }
+    routeAfterLoad();
+    render();
+    startLiveSync();
+    maybePeriodicBackup();
+  }
+
+  // Synchronisation en direct : chaque appareil reçoit les modifications des autres
+  function startLiveSync(){
+    seasonDocRef.onSnapshot(function(snap){
+      if(!snap.exists) return;
+      var d = snap.data();
+      if(!d || !d.payload) return;
+      if((d.rev || 0) <= S.rev) return;
+      // une modification locale est en attente : la vérification de version s'en chargera
+      if(saving || saveTimer || S.dirty) return;
+      try{ applyServerDoc(d); }catch(e){ console.error(e); return; }
+      rerenderKeepFocus();
+    }, function(err){ console.error(err); });
+  }
+
+  async function maybePeriodicBackup(){
+    try{
+      await db.runTransaction(async function(tx){
+        var cur = await tx.get(seasonDocRef);
+        if(!cur.exists) return;
+        var d = cur.data(), now = Date.now();
+        if(now - (d.lastBackupAt || 0) < PERIODIC_BACKUP_MS) return;
+        var slot = (d.backupSlot || 0) % BACKUP_SLOTS;
+        tx.set(backupRef(slot), backupDocFrom(d, now, "Copie automatique périodique"));
+        tx.update(seasonDocRef, { backupSlot: slot + 1, lastBackupAt: now });
+      });
+    }catch(e){ console.error(e); }
+  }
+
+  var saveTimer = null, saving = false, saveQueued = false, retryTimer = null;
+  function saveSeason(){
+    if(!S.loadOk){
+      showNotice("Le planning n'a pas pu être chargé : cette modification n'a pas été enregistrée. Recharge la page.");
+      return;
+    }
+    S.dirty = true;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(flushSave, 400);
+  }
+
+  async function flushSave(){
+    saveTimer = null;
+    if(saving){ saveQueued = true; return; }
+    if(!S.dirty) return;
+    saving = true;
+    S.dirty = false;
+    var payload = JSON.stringify(S.season);
+    var baseRev = S.rev;
+    var who = currentUserLabel();
+    try{
+      var result = await db.runTransaction(async function(tx){
+        var cur = await tx.get(seasonDocRef);
+        if(!cur.exists) throw new Error("Document du planning introuvable");
+        var d = cur.data();
+        // Quelqu'un a enregistré entre-temps : on refuse d'écraser sa version
+        if((d.rev || 0) !== baseRev) return { conflict: true, doc: d };
+        var now = Date.now();
+        var update = { payload: payload, rev: baseRev + 1, updatedAt: now, updatedBy: who };
+        var loss = bigLoss(d.payload, payload);
+        if(d.payload && (loss || now - (d.lastBackupAt || 0) > BACKUP_INTERVAL_MS)){
+          var slot = (d.backupSlot || 0) % BACKUP_SLOTS;
+          tx.set(backupRef(slot), backupDocFrom(d, now, loss ? "Avant une suppression importante ("+who+")" : "Copie automatique ("+who+")"));
+          update.backupSlot = slot + 1;
+          update.lastBackupAt = now;
+        }
+        tx.update(seasonDocRef, update);
+        return { conflict: false, rev: baseRev + 1, at: now, who: who };
+      });
+      if(result.conflict){
+        clearTimeout(saveTimer); saveTimer = null; S.dirty = false; saveQueued = false;
+        applyServerDoc(result.doc);
+        showNotice("Quelqu'un d'autre ("+(S.serverMeta.updatedBy || "un autre appareil")+") vient de modifier le planning. Pour ne pas effacer son travail, ta dernière modification n'a PAS été enregistrée. La version à jour est affichée : refais ta modification.");
+        rerenderKeepFocus();
+      } else {
+        S.rev = result.rev;
+        S.serverMeta = { updatedAt: result.at, updatedBy: result.who };
+        if(S.notice && S.notice.saveError){ S.notice = null; rerenderKeepFocus(); }
+      }
+    }catch(e){
+      console.error(e);
+      S.dirty = true;
+      S.notice = { msg: "Enregistrement impossible pour le moment (connexion ?). Ne ferme pas la page : nouvelle tentative automatique…", kind: "error", saveError: true };
+      rerenderKeepFocus();
+      clearTimeout(retryTimer);
+      retryTimer = setTimeout(function(){ if(S.dirty && !saveTimer) flushSave(); }, 5000);
+    }finally{
+      saving = false;
+      if(saveQueued){ saveQueued = false; if(S.dirty) flushSave(); }
+    }
+  }
+
+  window.addEventListener("beforeunload", function(e){
+    if(saving || saveTimer || S.dirty){ e.preventDefault(); e.returnValue = ""; return ""; }
+  });
+
+  /* ---------------- SAUVEGARDES ---------------- */
+  async function loadBackups(){
+    S.backupsLoading = true; render();
+    try{
+      var qs = await db.collection("fcg-planning").where("type", "==", "backup").get({ source: "server" });
+      var list = [];
+      qs.forEach(function(doc){ var d = doc.data(); if(d && d.payload) list.push({ id: doc.id, at: d.at||0, savedAt: d.savedAt||0, savedBy: d.savedBy||"", reason: d.reason||"", summary: d.summary||summarizePayload(d.payload), payload: d.payload }); });
+      list.sort(function(a,b){ return b.at - a.at; });
+      S.backups = list;
+    }catch(e){
+      console.error(e);
+      toast("Impossible de lire les sauvegardes.");
+    }
+    S.backupsLoading = false; render();
+  }
+
+  async function backupNow(){
+    try{
+      await db.runTransaction(async function(tx){
+        var cur = await tx.get(seasonDocRef);
+        if(!cur.exists) throw new Error("missing");
+        var d = cur.data(), now = Date.now();
+        var slot = (d.backupSlot || 0) % BACKUP_SLOTS;
+        tx.set(backupRef(slot), backupDocFrom(d, now, "Copie manuelle ("+currentUserLabel()+")"));
+        tx.update(seasonDocRef, { backupSlot: slot + 1, lastBackupAt: now });
+      });
+      showNotice("Copie de sauvegarde créée.", "info");
+      if(S.backups) await loadBackups(); else render();
+    }catch(e){ console.error(e); showNotice("La copie de sauvegarde n'a pas pu être créée (connexion ?)."); render(); }
+  }
+
+  async function restorePayload(payloadStr, label){
+    var parsed;
+    try{ parsed = JSON.parse(payloadStr); }catch(e){ parsed = null; }
+    if(parsed && parsed.season) parsed = parsed.season;
+    if(!isValidSeason(parsed)){ showNotice("Ce fichier ne contient pas un planning valide."); render(); return; }
+    var sm = summarizePayload(parsed);
+    var ok = window.confirm("Remplacer TOUT le planning actuel par " + label + " ?\n\n" + summaryText(sm) +
+      "\n\nL'état actuel sera d'abord sauvegardé : tu pourras revenir en arrière.");
+    if(!ok) return;
+    if(saveTimer || S.dirty){ clearTimeout(saveTimer); saveTimer = null; S.dirty = false; }
+    var newPayload = JSON.stringify(parsed);
+    try{
+      var res = await db.runTransaction(async function(tx){
+        var cur = await tx.get(seasonDocRef);
+        if(!cur.exists) throw new Error("missing");
+        var d = cur.data(), now = Date.now();
+        var slot = (d.backupSlot || 0) % BACKUP_SLOTS;
+        tx.set(backupRef(slot), backupDocFrom(d, now, "Avant restauration ("+currentUserLabel()+")"));
+        var docData = { payload: newPayload, rev: (d.rev || 0) + 1, updatedAt: now,
+                        updatedBy: currentUserLabel() + " (restauration)", backupSlot: slot + 1, lastBackupAt: now };
+        tx.update(seasonDocRef, docData);
+        return docData;
+      });
+      applyServerDoc(res);
+      showNotice("Planning restauré (" + label + ").", "info");
+      await loadBackups();
+    }catch(e){ console.error(e); showNotice("La restauration a échoué (connexion ?). Rien n'a été modifié."); render(); }
+  }
+
+  function downloadSeasonCopy(){
+    var now = new Date();
+    var stamp = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")+"_"+String(now.getHours()).padStart(2,"0")+"h"+String(now.getMinutes()).padStart(2,"0");
+    var data = JSON.stringify({ app: "planning-fcg", exportedAt: now.toISOString(), rev: S.rev, season: S.season }, null, 1);
+    var blob = new Blob([data], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "planning-fcg_" + stamp + ".json";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function renderBackupsSection(){
+    var listHtml = "";
+    if(S.backupsLoading){
+      listHtml = '<div class="muted" style="padding:8px 4px;font-size:13px;">Chargement des sauvegardes…</div>';
+    } else if(S.backups){
+      listHtml = S.backups.length ? S.backups.map(function(b){
+        return '<div class="backup-row">' +
+          '<div class="br-main">' +
+            '<div class="br-date">État du ' + esc(fmtDateTime(b.savedAt || b.at)) + '</div>' +
+            '<div class="br-meta">' + esc(summaryText(b.summary)) + (b.savedBy ? '<br>Dernière modif. par ' + esc(b.savedBy) : '') + (b.reason ? '<br>' + esc(b.reason) : '') + '</div>' +
+          '</div>' +
+          '<button data-action="restore-backup" data-id="' + esc(b.id) + '">Restaurer</button>' +
+        '</div>';
+      }).join("") : '<div class="muted" style="padding:8px 4px;font-size:13px;">Aucune sauvegarde pour l\'instant — la première sera créée automatiquement.</div>';
+    }
+    return '' +
+      '<div class="section-title">Sauvegardes et sécurité des données</div>' +
+      '<div class="backup-box">' +
+        '<div class="pin-hint" style="text-align:left;margin:0 0 10px;">' +
+          'Dernier enregistrement : <strong>' + esc(fmtDateTime(S.serverMeta && S.serverMeta.updatedAt)) + '</strong>' +
+          (S.serverMeta && S.serverMeta.updatedBy ? ' par <strong>' + esc(S.serverMeta.updatedBy) + '</strong>' : '') + '.<br>' +
+          'Une copie de l\'état précédent est gardée automatiquement (toutes les 20 min d\'activité, toutes les 6 h et avant chaque grosse suppression). Les ' + BACKUP_SLOTS + ' dernières copies sont conservées.' +
+        '</div>' +
+        '<button class="primary-btn ghost" style="margin-top:6px;" data-action="load-backups">' + (S.backups ? "Actualiser la liste des sauvegardes" : "Voir les sauvegardes") + '</button>' +
+        '<button class="primary-btn ghost" style="margin-top:8px;" data-action="backup-now">Créer une sauvegarde maintenant</button>' +
+        '<button class="primary-btn ghost" style="margin-top:8px;" data-action="download-copy">Télécharger une copie sur cet appareil</button>' +
+        '<button class="primary-btn ghost" style="margin-top:8px;" data-action="import-copy">Importer une copie (fichier .json)</button>' +
+        '<input type="file" accept=".json,application/json" id="import-file-el" style="display:none;">' +
+      '</div>' +
+      listHtml;
+  }
+
+  function renderLoadError(){
+    return '<div class="error-screen">' +
+      '<img class="club-logo" style="width:110px;" src="'+CLUB_LOGO+'" alt="FC Grenoble Rugby">' +
+      '<h2>Planning inaccessible</h2>' +
+      '<p>Impossible de joindre le serveur pour le moment (connexion internet ?).</p>' +
+      '<p>Par sécurité, rien n\'est affiché ni enregistré tant que le vrai planning n\'est pas chargé.</p>' +
+      '<button class="primary-btn" data-action="retry-load">Réessayer</button>' +
+    '</div>';
+  }
+
   function savePrefs(){
     try{ localStorage.setItem(PREFS_KEY, JSON.stringify(S.prefs)); }catch(e){}
   }
@@ -832,7 +1161,8 @@
   function render(){
     var app = document.getElementById("app");
     var html = "";
-    if(S.screen === "landing") html = renderLanding();
+    if(S.screen === "load-error") html = renderLoadError();
+    else if(S.screen === "landing") html = renderLanding();
     else if(S.screen === "player-select") html = renderPlayerSelect();
     else if(S.screen === "player-view") html = renderPlayerView();
     else if(S.screen === "player-code-create") html = renderPlayerCodeCreate();
@@ -843,7 +1173,8 @@
     else if(S.screen === "admin") html = renderStaff();
     else if(S.screen === "rehab-dashboard") html = renderRehabDashboard();
     app.classList.toggle("app-wide", S.screen === "admin" && S.staffTab === "planning");
-    app.innerHTML = html + '<div class="toast" id="toast"></div>';
+    var noticeHtml = S.notice ? '<div class="notice-banner '+(S.notice.kind==="info"?"info":"")+'"><div class="nb-text">'+esc(S.notice.msg)+'</div><button data-action="dismiss-notice">OK</button></div>' : '';
+    app.innerHTML = noticeHtml + html + '<div class="toast" id="toast"></div>';
     var pinInput = document.getElementById("pin-input-el");
     if(pinInput) pinInput.focus();
     var searchInput = document.getElementById("search-input-el");
@@ -1594,7 +1925,8 @@
 
 
     return '' +
-      '<div class="section-title">Code administrateur (votre accès)</div>' +
+      renderBackupsSection() +
+      '<div class="section-title" style="margin-top:26px;">Code administrateur (votre accès)</div>' +
       '<div class="form-row">' +
         '<label>Nouveau code admin</label>' +
         '<input placeholder="'+esc(S.season.adminPin)+'" value="'+esc(S.newAdminPin||"")+'" data-field="newAdminPin">' +
@@ -1669,6 +2001,17 @@
       if(!el) return;
       var action = el.getAttribute("data-action");
 
+      if(action === "dismiss-notice"){ S.notice = null; return render(); }
+      if(action === "retry-load"){ window.location.reload(); return; }
+      if(action === "load-backups"){ loadBackups(); return; }
+      if(action === "backup-now"){ backupNow(); return; }
+      if(action === "download-copy"){ downloadSeasonCopy(); return; }
+      if(action === "import-copy"){ var fi = document.getElementById("import-file-el"); if(fi) fi.click(); return; }
+      if(action === "restore-backup"){
+        var bk = (S.backups||[]).filter(function(x){ return x.id === el.getAttribute("data-id"); })[0];
+        if(bk) restorePayload(bk.payload, "l'état du " + fmtDateTime(bk.savedAt || bk.at));
+        return;
+      }
       if(action === "go-landing"){ S.screen = "landing"; return render(); }
       if(action === "go-player-select"){ S.screen = "player-select"; S.filters.playerQuery=""; S.__focusSearch=true; return render(); }
       if(action === "go-staff-pin"){ S.screen = "pin-entry"; S.pinTarget = "staff"; S.pinValue=""; S.pinError=""; return render(); }
@@ -2204,6 +2547,16 @@
 
     app.addEventListener("change", function(e){
       var el = e.target;
+      if(el.id === "import-file-el"){
+        var file = el.files && el.files[0];
+        if(file){
+          var reader = new FileReader();
+          reader.onload = function(){ restorePayload(String(reader.result || ""), "le fichier « " + file.name + " »"); };
+          reader.readAsText(file);
+        }
+        el.value = "";
+        return;
+      }
       var field = el.getAttribute("data-field");
       if(field === "playerSelectValue"){ S.playerSelectValue = el.value; return render(); }
       var tri = el.getAttribute("data-tri");
