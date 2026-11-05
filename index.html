@@ -549,15 +549,8 @@
 
   function defaultPrefs(){ return { role: null, playerId: null, coachId: null, staffAuthed: false, adminAuthed: false, rehabAuthed: false }; }
 
-  async function loadAll(){
-    try{
-      var snap = await seasonDocRef.get();
-      if(snap.exists && snap.data() && snap.data().payload){
-        S.season = JSON.parse(snap.data().payload);
-      } else {
-        S.season = defaultSeason();
-        await seasonDocRef.set({ payload: JSON.stringify(S.season) });
-      }
+  var APP_VERSION = 3;
+  function normalizeSeason(){
       if(!S.season.adminPin) S.season.adminPin = S.season.pin || "2027";
       if(!S.season.staffPin) S.season.staffPin = "1892";
       if(!S.season.rehabPin) S.season.rehabPin = "2626";
@@ -590,10 +583,59 @@
           delete g.presentIds;
         }
       });});});
+  }
+  function applyRemote(d){
+    S.season = JSON.parse(d.payload);
+    S.rev = d.rev || 0;
+    S.lastPayload = d.payload;
+    normalizeSeason();
+  }
+  // Une copie automatique par jour (fcg-planning/auto-AAAA-MM-JJ), jamais écrasée
+  function dailyBackup(d){
+    var ref = db.collection("fcg-planning").doc("auto-" + new Date().toISOString().slice(0,10));
+    db.runTransaction(async function(tx){
+      var b = await tx.get(ref);
+      if(!b.exists) tx.set(ref, { payload: d.payload, rev: d.rev || 0, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    }).catch(function(e){ console.warn("Sauvegarde auto :", e); });
+  }
+  // Synchronisation en direct : chaque appareil reste à jour, plus de copies périmées
+  function isEditing(){ var a = document.activeElement; return !!(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)); }
+  function startLiveSync(){
+    seasonDocRef.onSnapshot(function(snap){
+      if(!snap.exists || snap.metadata.hasPendingWrites) return;
+      var d = snap.data(); if(!d || !d.payload) return;
+      if((d.rev||0) < (S.rev||0)) return;
+      if((d.rev||0) === (S.rev||0) && d.payload === S.lastPayload) return;
+      if(saving || S.pendingSave) return;
+      if(isEditing()){ S.remoteWaiting = d; return; }
+      applyRemote(d); render();
+    }, function(e){ console.warn(e); });
+    document.addEventListener("focusout", function(){
+      setTimeout(function(){
+        var d = S.remoteWaiting;
+        if(!d || saving || S.pendingSave || isEditing()) return;
+        S.remoteWaiting = null;
+        if((d.rev||0) > (S.rev||0) || ((d.rev||0) === (S.rev||0) && d.payload !== S.lastPayload)){ applyRemote(d); render(); }
+      }, 60);
+    });
+  }
+
+  async function loadAll(){
+    try{
+      var snap = await seasonDocRef.get({ source: "server" });
+      if(snap.exists && snap.data() && snap.data().payload){
+        applyRemote(snap.data());
+        dailyBackup(snap.data());
+        startLiveSync();
+      } else {
+        // Document introuvable : on n'écrit JAMAIS les données de départ par-dessus la base
+        throw new Error("Planning introuvable dans la base");
+      }
     }catch(e){
       console.error(e);
       S.season = defaultSeason();
-      toast("Connexion au serveur impossible — données de démarrage affichées.");
+      S.offlineFallback = true; // protège la base : aucune sauvegarde tant que la lecture a échoué
+      setTimeout(function(){ toast("Planning non chargé depuis la base — rien ne sera enregistré. Recharge la page."); }, 300);
     }
     try{
       var raw = localStorage.getItem(PREFS_KEY);
@@ -620,11 +662,40 @@
 
   var saveTimer = null;
   function saveSeason(){
+    if(S.offlineFallback){ toast("Base non chargée : modification NON enregistrée. Recharge la page."); return; }
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(async function(){
-      try{ await seasonDocRef.set({ payload: JSON.stringify(S.season) }); }
-      catch(e){ toast("Erreur de sauvegarde, vérifie ta connexion internet."); }
-    }, 250);
+    S.pendingSave = true;
+    saveTimer = setTimeout(doSave, 250);
+  }
+  var saving = false;
+  async function doSave(){
+    if(saving){ saveTimer = setTimeout(doSave, 300); return; }
+    saving = true; S.pendingSave = false;
+    var payload = JSON.stringify(S.season);
+    var expected = S.rev || 0;
+    try{
+      var res = await db.runTransaction(async function(tx){
+        var snap = await tx.get(seasonDocRef);
+        if(!snap.exists) throw new Error("Document absent");
+        var d = snap.data();
+        if((d.rev || 0) !== expected || d.payload !== S.lastPayload) return { conflict: true, data: d };
+        tx.update(seasonDocRef, { payload: payload, rev: expected + 1, appVersion: APP_VERSION,
+                                  updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        return { conflict: false };
+      });
+      if(res.conflict){
+        clearTimeout(saveTimer); S.pendingSave = false;
+        applyRemote(res.data); render();
+        toast("Le planning venait d'être modifié ailleurs : il a été rechargé. Refais ta dernière action.");
+      } else {
+        S.rev = expected + 1;
+        S.lastPayload = payload;
+      }
+    }catch(e){
+      console.error(e);
+      toast("Erreur de sauvegarde — modification NON enregistrée. Vérifie ta connexion.");
+    }
+    saving = false;
   }
   function savePrefs(){
     try{ localStorage.setItem(PREFS_KEY, JSON.stringify(S.prefs)); }catch(e){}
@@ -1633,6 +1704,12 @@
       '<button class="primary-btn" data-action="save-season-dates">Enregistrer les dates de saison</button>' +
       '<div class="pin-hint" style="text-align:left;margin-top:10px;">Ces dates encadrent les absences que joueuses et staff peuvent déclarer.</div>' +
 
+      '<div class="section-title" style="margin-top:26px;">Sauvegardes</div>' +
+      '<button class="primary-btn" data-action="export-backup">Télécharger une sauvegarde</button>' +
+      '<label class="primary-btn" style="display:block;text-align:center;margin-top:10px;cursor:pointer;">Restaurer une sauvegarde' +
+        '<input type="file" accept=".json,application/json,text/plain" data-field="importBackup" style="display:none"></label>' +
+      '<div class="pin-hint" style="text-align:left;margin-top:10px;">Télécharge une sauvegarde régulièrement et garde le fichier sur ton ordinateur. Une copie automatique est aussi créée chaque jour dans Firebase (documents « auto-AAAA-MM-JJ »).</div>' +
+
       '<div class="section-title" style="margin-top:26px;">Postes</div>' +
       S.season.postes.map(function(po,idx){
         return '<div class="coach-edit-row"><span class="re-name">'+esc(po)+'</span><button class="icon-btn danger" data-action="delete-poste" data-index="'+idx+'">'+ICONS.trash+'</button></div>';
@@ -2086,6 +2163,14 @@
         S.season.terrains.splice(tidx,1);
         saveSeason(); toast("Terrain retiré"); return render();
       }
+      if(action === "export-backup"){
+        var blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), rev: S.rev, season: S.season })], { type: "application/json" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "planning-sauvegarde-" + new Date().toISOString().slice(0,10) + ".json";
+        document.body.appendChild(a); a.click(); a.remove();
+        toast("Sauvegarde téléchargée"); return;
+      }
       if(action === "save-season-dates"){
         if(S.newSeasonStart) S.season.seasonStart = S.newSeasonStart;
         if(S.newSeasonEnd) S.season.seasonEnd = S.newSeasonEnd;
@@ -2224,6 +2309,23 @@
       var el = e.target;
       var field = el.getAttribute("data-field");
       if(isPlayerScreen() && PLAYER_ALLOWED_FIELDS.indexOf(field)===-1) return;
+      if(field === "importBackup"){
+        var file = el.files && el.files[0]; el.value = "";
+        if(!file) return;
+        var reader = new FileReader();
+        reader.onload = function(){
+          try{
+            var obj = JSON.parse(reader.result);
+            var data = obj.season || obj;
+            if(!data || !Array.isArray(data.days) || !Array.isArray(data.roster)) throw new Error("format");
+            if(!confirm("Remplacer tout le planning actuel par cette sauvegarde ?\n(" + data.days.length + " jours, " + data.roster.length + " joueurs)")) return;
+            S.season = data; normalizeSeason(); saveSeason(); render();
+            toast("Sauvegarde restaurée");
+          }catch(e){ toast("Fichier de sauvegarde invalide."); }
+        };
+        reader.readAsText(file);
+        return;
+      }
       if(field === "playerSelectValue"){ S.playerSelectValue = el.value; return render(); }
       var tri = el.getAttribute("data-tri");
       if(tri){
